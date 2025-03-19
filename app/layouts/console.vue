@@ -8,7 +8,7 @@
       <Console-Header />
       
       <!-- Page Content -->
-      <main class="flex-1 overflow-auto">
+      <main class="flex-1 overflow-auto p-5">
         <slot />
       </main>
     </div>

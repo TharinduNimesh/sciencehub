@@ -3,11 +3,36 @@ import { setupInspiraUI } from "@inspira-ui/plugins";
 
 export default {
   darkMode: "selector",
-  safelist: ["dark"],
+  safelist: [
+    'dark',
+    // Badge background colors for soft variant
+    'bg-yellow-50',
+    'bg-green-50',
+    'bg-blue-50',
+    'bg-red-50',
+    'text-yellow-500',
+    'text-green-500',
+    'text-blue-500',
+    'text-red-500',
+    // Dark mode variations
+    'dark:bg-yellow-400',
+    'dark:bg-green-400',
+    'dark:bg-blue-400',
+    'dark:bg-red-400',
+    'dark:text-yellow-400',
+    'dark:text-green-400',
+    'dark:text-blue-400',
+    'dark:text-red-400',
+    'dark:bg-opacity-10'
+  ],
   prefix: "",
   content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx,vue}",
+    "./components/**/*.{js,ts,jsx,tsx,vue}",
+    "./pages/**/*.{js,ts,jsx,tsx,vue}",
+    "./app.vue",
+    "./layouts/**/*.vue",
+    "./plugins/**/*.{js,ts}",
+    "./nuxt.config.{js,ts}",
   ],
   theme: {
     extend: {

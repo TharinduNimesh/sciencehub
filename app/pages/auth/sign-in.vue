@@ -78,7 +78,7 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { Motion } from 'motion-v'
-import { z } from 'zod'
+import { signInSchema } from '@/schemas'
 import { useAuthStore } from '~/stores/auth'
 import PrimaryButton from '@/components/Landing/PrimaryButton.vue'
 
@@ -87,15 +87,7 @@ const authStore = useAuthStore()
 const router = useRouter()
 const toast = useToast()
 
-const schema = z.object({
-    email: z.string()
-        .email('Please enter a valid email address')
-        .min(1, 'Email is required'),
-    password: z.string()
-        .min(6, 'Password must be at least 6 characters')
-        .max(100, 'Password is too long'),
-    rememberMe: z.boolean().optional()
-})
+const schema = signInSchema
 
 const formState = reactive({
     email: '',

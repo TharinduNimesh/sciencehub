@@ -15,7 +15,7 @@
             <div class="lg:col-span-2 relative h-full">
               <div class="h-full">
                 <img
-                    src="https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&q=80"
+                  src="https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&q=80"
                   alt="Join our classes"
                   class="w-full h-full object-cover"
                 />
@@ -44,18 +44,20 @@
                 </h2>
                 <p class="text-gray-600 mb-8">Take the first step towards academic excellence. Join our innovative learning platform today.</p>
 
-                <form class="space-y-6">
+                <UForm :schema="joinFormSchema" :state="formState" @submit="handleSubmit" class="space-y-6">
                   <div class="grid md:grid-cols-2 gap-6">
-                    <UFormGroup label="Full Name">
+                    <UFormGroup label="Full Name" name="fullName">
                       <UInput
+                        v-model="formState.fullName"
                         placeholder="Enter your full name"
                         icon="i-heroicons-user"
                         class="bg-white/50"
                       />
                     </UFormGroup>
 
-                    <UFormGroup label="Email">
+                    <UFormGroup label="Email" name="email">
                       <UInput
+                        v-model="formState.email"
                         type="email"
                         placeholder="Enter your email"
                         icon="i-heroicons-envelope"
@@ -65,8 +67,9 @@
                   </div>
 
                   <div class="grid md:grid-cols-2 gap-6">
-                    <UFormGroup label="Contact Number">
+                    <UFormGroup label="Contact Number" name="contactNumber">
                       <UInput
+                        v-model="formState.contactNumber"
                         type="tel"
                         placeholder="Enter your contact number"
                         icon="i-heroicons-phone"
@@ -74,38 +77,45 @@
                       />
                     </UFormGroup>
 
-                    <UFormGroup label="Grade">
+                    <UFormGroup label="Grade" name="grade">
                       <USelectMenu
+                        v-model="formState.grade"
                         :options="[...Array(6)].map((_, i) => ({
                           label: `Grade ${i + 6}`,
                           value: i + 6
                         }))"
                         placeholder="Select your grade"
                         class="bg-white/50"
+                        value-attribute="value"
                       />
                     </UFormGroup>
                   </div>
 
-                  <UFormGroup label="How did you find about us?">
+                  <UFormGroup label="How did you find about us?" name="referralSource">
                     <USelectMenu
+                      v-model="formState.referralSource"
                       :options="[
                         { label: 'Social Media', value: 'social' },
                         { label: 'Friend/Family', value: 'friend' },
                         { label: 'Search Engine', value: 'search' },
+                        { label: 'Advertisement', value: 'advertisement' },
+                        { label: 'Hand Bill', value: 'hand-bill' },
                         { label: 'Other', value: 'other' }
                       ]"
                       placeholder="Please select"
+                      value-attribute="value"
                       class="bg-white/50"
                     />
                   </UFormGroup>
-                    <div class="flex flex-col sm:flex-row items-center gap-4 sm:justify-between pt-6">
+
+                  <div class="flex flex-col sm:flex-row items-center gap-4 sm:justify-between pt-6">
                     <p class="text-sm text-gray-500 order-2 sm:order-1">* All fields are required</p>
-                    <PrimaryButton type="submit" size="lg" class="w-full sm:w-auto order-1 sm:order-2">
+                    <PrimaryButton type="submit" size="lg" class="w-full sm:w-auto order-1 sm:order-2" :loading="isLoading">
                       Submit Application
                       <UIcon name="i-heroicons-arrow-right" class="ml-2" />
                     </PrimaryButton>
-                    </div>
-                </form>
+                  </div>
+                </UForm>
               </div>
             </div>
           </div>
@@ -116,7 +126,59 @@
 </template>
 
 <script setup>
+import { ref, reactive } from 'vue';
 import PrimaryButton from './PrimaryButton.vue';
+import { joinFormSchema } from '@/schemas';
+
+const { createJoinRequest } = useJoinRequests();
+const toast = useToast();
+const isLoading = ref(false);
+
+const formState = reactive({
+  fullName: '',
+  email: '',
+  contactNumber: '',
+  grade: null,
+  referralSource: ''
+});
+
+const handleSubmit = async (event) => {
+  isLoading.value = true;
+  
+  try {
+    const validatedData = event.data;
+    
+    await createJoinRequest({
+      name: validatedData.fullName,
+      email: validatedData.email,
+      mobile: validatedData.contactNumber,
+      grade: validatedData.grade,
+      how_did_find_us: validatedData.referralSource
+    });
+    
+    // Show success message
+    toast.add({
+      title: 'Success',
+      description: 'Your application has been submitted successfully. We will contact you soon.',
+      color: 'green'
+    });
+    
+    // Clear form
+    Object.keys(formState).forEach(key => {
+      formState[key] = key === 'grade' ? null : '';
+    });
+    
+  } catch (error) {
+    toast.add({
+      title: 'Error',
+      description: 'An error occurred while submitting your application. Please try again.',
+      color: 'red'
+    });
+    console.error('Form submission error:', error);
+  } finally {
+    isLoading.value = false;
+  }
+};
 </script>
 
 <style>
