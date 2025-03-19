@@ -27,7 +27,7 @@
 
         <div class="flex items-center space-x-4">
           <template v-if="!authStore.isAuthenticated">
-            <NuxtLink to="/auth/sign-in">
+            <NuxtLink to="/auth/sign-in" class="hidden md:block">
               <SecondaryButton size="sm">Sign In</SecondaryButton>
             </NuxtLink>
 
