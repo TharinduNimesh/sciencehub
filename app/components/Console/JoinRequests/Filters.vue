@@ -7,6 +7,7 @@
           placeholder="Search by name or email"
           icon="i-heroicons-magnifying-glass"
           :ui="{ base: 'relative flex w-full', input: 'block w-full bg-gray-50/50' }"
+          @input="handleSearchInput"
         />
         
         <USelectMenu
@@ -81,7 +82,7 @@
           variant="ghost"
           icon="i-heroicons-x-mark"
           size="sm"
-          @click="clearFilters"
+          @click="handleClearFilters"
         >
           Clear all
         </UButton>
@@ -119,16 +120,30 @@ const invitationStatusOptions: Option[] = [
   { label: 'Expired', value: 'Expired' }
 ];
 
+const emit = defineEmits(['update:filters']);
+
 // Type-safe handlers for select changes
 const handleGradeChange = (value: number | undefined) => {
   filters.grade = value;
+  emit('update:filters', filters);
 };
 
 const handleStatusChange = (value: string | undefined) => {
   filters.status = value;
+  emit('update:filters', filters);
 };
 
 const handleInvitationStatusChange = (value: string | undefined) => {
   filters.invitationStatus = value;
+  emit('update:filters', filters);
+};
+
+const handleSearchInput = () => {
+  emit('update:filters', filters);
+};
+
+const handleClearFilters = () => {
+  clearFilters();
+  emit('update:filters', filters);
 };
 </script>

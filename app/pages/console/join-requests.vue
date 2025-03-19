@@ -32,6 +32,8 @@
 
         <ConsoleJoinRequestsFilters
           v-show="showFilters"
+          :filters="filters"
+          @update:filters="updateFilters"
         />
 
         <div class="space-y-2">
@@ -52,7 +54,7 @@
             </div>
             <UPagination
               v-model="page"
-              :total="requests.length"
+              :total="filteredRequests.length"
               :page-count="pageSize"
               size="sm"
               :ui="{
@@ -80,22 +82,12 @@
 </template>
 
 <script setup lang="ts">
+// Make sure we import the type directly to avoid global type conflicts
+import { useJoinRequests, type JoinRequest } from '~/composables/useJoinRequests'
+
 definePageMeta({
   layout: 'console'
 })
-
-interface JoinRequest {
-  id: number;
-  name: string;
-  email: string;
-  grade: number;
-  contactNumber: string;
-  referralSource: string;
-  status: 'Pending' | 'Accepted' | 'Rejected';
-  requestedAt: string;
-  acceptedAt: string | null;
-  invitationStatus: string | null;
-}
 
 const showFilters = ref(false)
 const isRefreshing = ref(false)
@@ -104,174 +96,22 @@ const selectedRequest = ref<JoinRequest | null>(null)
 const page = ref(1)
 const pageSize = 8
 
-const { filterRequests } = useJoinRequestFilters()
+const { filterRequests, filters } = useJoinRequestFilters()
+const { fetchJoinRequests, updateRequestStatus } = useJoinRequests()
 
-// Dummy data for now - will be replaced with actual data from Supabase
-const requests = ref<JoinRequest[]>([
-  {
-    id: 1,
-    name: 'John Doe',
-    email: 'john@example.com',
-    grade: 6,
-    contactNumber: '+94 71 234 5678',
-    referralSource: 'Social Media',
-    status: 'Pending',
-    requestedAt: '2024-01-15T10:30:00Z',
-    acceptedAt: null,
-    invitationStatus: null
-  },
-  {
-    id: 2,
-    name: 'Jane Smith',
-    email: 'jane@example.com',
-    grade: 7,
-    contactNumber: '+94 71 987 6543',
-    referralSource: 'Friend',
-    status: 'Accepted',
-    requestedAt: '2024-01-14T08:15:00Z',
-    acceptedAt: '2024-01-14T09:30:00Z',
-    invitationStatus: 'Sent'
-  },
-  {
-    id: 3,
-    name: 'Mike Johnson',
-    email: 'mike@example.com',
-    grade: 8,
-    contactNumber: '+94 71 555 1234',
-    referralSource: 'Search Engine',
-    status: 'Rejected',
-    requestedAt: '2024-01-13T14:20:00Z',
-    acceptedAt: null,
-    invitationStatus: null
-  },
-  {
-    id: 4,
-    name: 'Sarah Wilson',
-    email: 'sarah@example.com',
-    grade: 9,
-    contactNumber: '+94 71 111 2222',
-    referralSource: 'Advertisement',
-    status: 'Pending',
-    requestedAt: '2024-01-16T09:15:00Z',
-    acceptedAt: null,
-    invitationStatus: null
-  },
-  {
-    id: 5,
-    name: 'David Brown',
-    email: 'david@example.com',
-    grade: 10,
-    contactNumber: '+94 71 333 4444',
-    referralSource: 'Social Media',
-    status: 'Accepted',
-    requestedAt: '2024-01-15T14:20:00Z',
-    acceptedAt: '2024-01-15T15:30:00Z',
-    invitationStatus: 'Accepted'
-  },
-  {
-    id: 6,
-    name: 'Emma Davis',
-    email: 'emma@example.com',
-    grade: 6,
-    contactNumber: '+94 71 555 6666',
-    referralSource: 'Friend',
-    status: 'Pending',
-    requestedAt: '2024-01-16T11:45:00Z',
-    acceptedAt: null,
-    invitationStatus: null
-  },
-  {
-    id: 7,
-    name: 'Michael Chen',
-    email: 'michael@example.com',
-    grade: 7,
-    contactNumber: '+94 71 777 8888',
-    referralSource: 'Hand Bill',
-    status: 'Accepted',
-    requestedAt: '2024-01-14T16:30:00Z',
-    acceptedAt: '2024-01-14T17:45:00Z',
-    invitationStatus: 'Sent'
-  },
-  {
-    id: 5,
-    name: 'David Brown',
-    email: 'david@example.com',
-    grade: 10,
-    contactNumber: '+94 71 333 4444',
-    referralSource: 'Social Media',
-    status: 'Accepted',
-    requestedAt: '2024-01-15T14:20:00Z',
-    acceptedAt: '2024-01-15T15:30:00Z',
-    invitationStatus: 'Accepted'
-  },
-  {
-    id: 6,
-    name: 'Emma Davis',
-    email: 'emma@example.com',
-    grade: 6,
-    contactNumber: '+94 71 555 6666',
-    referralSource: 'Friend',
-    status: 'Pending',
-    requestedAt: '2024-01-16T11:45:00Z',
-    acceptedAt: null,
-    invitationStatus: null
-  },
-  {
-    id: 7,
-    name: 'Michael Chen',
-    email: 'michael@example.com',
-    grade: 7,
-    contactNumber: '+94 71 777 8888',
-    referralSource: 'Hand Bill',
-    status: 'Accepted',
-    requestedAt: '2024-01-14T16:30:00Z',
-    acceptedAt: '2024-01-14T17:45:00Z',
-    invitationStatus: 'Sent'
-  },
-  {
-    id: 8,
-    name: 'Lisa Taylor',
-    email: 'lisa@example.com',
-    grade: 8,
-    contactNumber: '+94 71 999 0000',
-    referralSource: 'Search Engine',
-    status: 'Rejected',
-    requestedAt: '2024-01-13T10:20:00Z',
-    acceptedAt: null,
-    invitationStatus: null
-  },
-  {
-    id: 9,
-    name: 'Kevin Anderson',
-    email: 'kevin@example.com',
-    grade: 9,
-    contactNumber: '+94 71 122 3344',
-    referralSource: 'Advertisement',
-    status: 'Pending',
-    requestedAt: '2024-01-16T13:15:00Z',
-    acceptedAt: null,
-    invitationStatus: null
-  },
-  {
-    id: 10,
-    name: 'Rachel Green',
-    email: 'rachel@example.com',
-    grade: 10,
-    contactNumber: '+94 71 556 7788',
-    referralSource: 'Social Media',
-    status: 'Accepted',
-    requestedAt: '2024-01-15T09:30:00Z',
-    acceptedAt: '2024-01-15T10:45:00Z',
-    invitationStatus: 'Expired'
-  }
-])
+const updateFilters = (newFilters: any) => {
+  Object.assign(filters, newFilters)
+}
+
+// Store join requests
+const requests = ref<JoinRequest[]>([])
 
 // Apply filters to requests
 const filteredRequests = computed(() => {
   return filterRequests(requests.value)
 })
 
-// Get paginated requests - using exactly the same approach as Nuxt UI docs
+// Get paginated requests
 const paginatedRequests = computed(() => {
   return filteredRequests.value.slice(
     (page.value - 1) * pageSize,
@@ -282,8 +122,9 @@ const paginatedRequests = computed(() => {
 const refreshData = async () => {
   isRefreshing.value = true
   try {
-    // TODO: Implement refresh logic with Supabase
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    requests.value = await fetchJoinRequests()
+  } catch (error) {
+    console.error('Error fetching join requests:', error)
   } finally {
     isRefreshing.value = false
   }
@@ -295,16 +136,34 @@ const handleViewRequest = (request: JoinRequest) => {
 }
 
 const handleAcceptRequest = async (request: JoinRequest) => {
-  // TODO: Implement accept logic
-  isDetailsModalOpen.value = false
+  try {
+    await updateRequestStatus(request.id, true)
+    await refreshData()
+  } catch (error) {
+    console.error('Error accepting request:', error)
+  } finally {
+    isDetailsModalOpen.value = false
+  }
 }
 
 const handleRejectRequest = async (request: JoinRequest) => {
-  // TODO: Implement reject logic
-  isDetailsModalOpen.value = false
+  try {
+    await updateRequestStatus(request.id, false)
+    await refreshData()
+  } catch (error) {
+    console.error('Error rejecting request:', error)
+  } finally {
+    isDetailsModalOpen.value = false
+  }
 }
 
 const handleDeleteRequest = async (request: JoinRequest) => {
-  // TODO: Implement delete logic
+  // Currently not implemented as we're using CASCADE delete in the database
+  // If needed, we can add a delete function to the useJoinRequests composable
 }
+
+// Fetch data on component mount
+onMounted(() => {
+  refreshData()
+})
 </script>

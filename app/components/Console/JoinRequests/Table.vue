@@ -55,22 +55,14 @@
 </template>
 
 <script setup lang="ts">
-interface TableRow {
-  id: number;
-  name: string;
-  email: string;
-  grade: number;
-  status: 'Pending' | 'Accepted' | 'Rejected';
-  invitationStatus?: 'Sent' | 'Accepted' | 'Expired';
-  requestedAt: string;
-  acceptedAt?: string;
-}
+import type { PropType } from 'vue'
+import type { JoinRequest } from '~/composables/useJoinRequests'
 
 type StatusColor = 'yellow' | 'green' | 'red' | 'blue' | 'gray';
 
 const props = defineProps({
   rows: {
-    type: Array as PropType<TableRow[]>,
+    type: Array as PropType<JoinRequest[]>,
     required: true,
     default: () => []
   },
@@ -105,8 +97,8 @@ const columns = [
 ];
 
 // Helper functions for status colors
-const getStatusColor = (status: TableRow['status']): StatusColor => {
-  const colors: Record<TableRow['status'], StatusColor> = {
+const getStatusColor = (status: JoinRequest['status']): StatusColor => {
+  const colors: Record<JoinRequest['status'], StatusColor> = {
     'Pending': 'yellow',
     'Accepted': 'green',
     'Rejected': 'red'
@@ -114,17 +106,17 @@ const getStatusColor = (status: TableRow['status']): StatusColor => {
   return colors[status] || 'gray';
 };
 
-const getInvitationStatusColor = (status: TableRow['invitationStatus']): StatusColor => {
-  const colors: Record<NonNullable<TableRow['invitationStatus']>, StatusColor> = {
+const getInvitationStatusColor = (status: JoinRequest['invitationStatus']): StatusColor => {
+  const colors: Record<NonNullable<JoinRequest['invitationStatus']>, StatusColor> = {
     'Sent': 'blue',
     'Accepted': 'green',
     'Expired': 'yellow'
   };
-  return status ? colors[status] : 'gray';
+  return status ? colors[status] || 'gray' : 'gray';
 };
 
 // Action items based on row status
-const getActionItems = (row: TableRow) => {
+const getActionItems = (row: JoinRequest) => {
   const baseItems = [[{
     label: 'View Details',
     icon: 'i-heroicons-eye',
@@ -163,5 +155,10 @@ const getActionItems = (row: TableRow) => {
   ]
 }
 
-const emit = defineEmits(['view', 'accept', 'reject', 'delete']);
+const emit = defineEmits<{
+  view: [request: JoinRequest]
+  accept: [request: JoinRequest]
+  reject: [request: JoinRequest]
+  delete: [request: JoinRequest]
+}>();
 </script>

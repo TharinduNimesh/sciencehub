@@ -1,70 +1,150 @@
 <template>
   <UModal
     v-model="isOpen"
-    :ui="{ width: 'sm:max-w-xl' }"
+    :ui="{ 
+      width: 'sm:max-w-2xl',
+      container: 'items-start sm:items-center',
+      overlay: { 
+        background: 'bg-gray-950/50 backdrop-blur-sm',
+        transition: { 
+          enter: 'ease-out duration-300',
+          enterFrom: 'opacity-0',
+          enterTo: 'opacity-100',
+          leave: 'ease-in duration-200',
+          leaveFrom: 'opacity-100',
+          leaveTo: 'opacity-0'
+        }
+      },
+      base: 'relative overflow-hidden',
+      background: 'bg-gradient-to-b from-white to-gray-50/80',
+      ring: 'ring-1 ring-gray-200',
+      rounded: 'rounded-2xl'
+    }"
   >
-    <UCard v-if="request">
+    <UCard v-if="request" class="shadow-none border-none">
       <template #header>
-        <div class="flex items-center justify-between">
-          <h3 class="text-lg font-semibold">Join Request Details</h3>
-          <UBadge
-            :color="getStatusColor(request.status)"
-            size="sm"
-            variant="soft"
-          >
-            {{ request.status }}
-          </UBadge>
+        <div class="space-y-4 pb-4 border-b border-gray-100">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <UAvatar
+                :text="request.name.split(' ').map(n => n[0]).join('')"
+                size="lg"
+                class="ring-2 ring-offset-2"
+                :class="[
+                  request.status === 'Pending' ? 'ring-yellow-500/20 bg-yellow-50 text-yellow-600' :
+                  request.status === 'Accepted' ? 'ring-green-500/20 bg-green-50 text-green-600' :
+                  'ring-red-500/20 bg-red-50 text-red-600'
+                ]"
+              />
+              <div>
+                <h3 class="text-xl font-semibold tracking-tight">Join Request Details</h3>
+                <p class="text-sm text-gray-500">Submitted {{ formatDateRelative(request.requestedAt) }}</p>
+              </div>
+            </div>
+            <UBadge
+              :color="getStatusColor(request.status)"
+              size="lg"
+              variant="soft"
+              class="px-3 py-1"
+            >
+              <div class="flex items-center gap-1.5">
+                <UIcon
+                  :name="getStatusIcon(request.status)"
+                  class="w-4 h-4"
+                />
+                {{ request.status }}
+              </div>
+            </UBadge>
+          </div>
         </div>
       </template>
 
-      <div class="space-y-6">
+      <div class="space-y-8 py-2">
         <!-- Basic Information -->
-        <div>
-          <h4 class="font-medium text-gray-900 mb-3">Student Information</h4>
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <div class="text-sm text-gray-500">Full Name</div>
-              <div class="font-medium">{{ request.name }}</div>
+        <div class="space-y-4">
+          <h4 class="flex items-center gap-2 text-base font-semibold text-gray-900">
+            <UIcon name="i-heroicons-user-circle" class="w-5 h-5 text-gray-400"/>
+            Student Information
+          </h4>
+          <div class="grid grid-cols-2 gap-6">
+            <div class="space-y-1">
+              <div class="text-sm font-medium text-gray-500">Full Name</div>
+              <div class="font-medium text-gray-900">{{ request.name }}</div>
             </div>
-            <div>
-              <div class="text-sm text-gray-500">Grade</div>
-              <div class="font-medium">Grade {{ request.grade }}</div>
+            <div class="space-y-1">
+              <div class="text-sm font-medium text-gray-500">Grade</div>
+              <div class="font-medium text-gray-900">Grade {{ request.grade }}</div>
             </div>
-            <div>
-              <div class="text-sm text-gray-500">Email</div>
-              <div class="font-medium">{{ request.email }}</div>
+            <div class="space-y-1">
+              <div class="text-sm font-medium text-gray-500">Email</div>
+              <div class="font-medium text-gray-900 flex items-center gap-2">
+                {{ request.email }}
+                <UButton
+                  color="gray"
+                  variant="ghost"
+                  icon="i-heroicons-clipboard"
+                  size="xs"
+                  square
+                  @click="copyToClipboard(request.email)"
+                />
+              </div>
             </div>
-            <div>
-              <div class="text-sm text-gray-500">Contact Number</div>
-              <div class="font-medium">{{ request.contactNumber }}</div>
+            <div class="space-y-1">
+              <div class="text-sm font-medium text-gray-500">Contact Number</div>
+              <div class="font-medium text-gray-900 flex items-center gap-2">
+                {{ request.contactNumber }}
+                <UButton
+                  color="gray"
+                  variant="ghost"
+                  icon="i-heroicons-clipboard"
+                  size="xs"
+                  square
+                  @click="copyToClipboard(request.contactNumber)"
+                />
+              </div>
             </div>
           </div>
         </div>
 
         <!-- Additional Information -->
-        <div>
-          <h4 class="font-medium text-gray-900 mb-3">Additional Information</h4>
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <div class="text-sm text-gray-500">How did they find us?</div>
-              <div class="font-medium">{{ request.referralSource }}</div>
+        <div class="space-y-4">
+          <h4 class="flex items-center gap-2 text-base font-semibold text-gray-900">
+            <UIcon name="i-heroicons-information-circle" class="w-5 h-5 text-gray-400"/>
+            Additional Information
+          </h4>
+          <div class="grid grid-cols-2 gap-6">
+            <div class="space-y-1">
+              <div class="text-sm font-medium text-gray-500">How did they find us?</div>
+              <div class="font-medium text-gray-900">{{ request.referralSource }}</div>
             </div>
-            <div>
-              <div class="text-sm text-gray-500">Requested At</div>
-              <div class="font-medium">{{ formatDate(request.requestedAt) }}</div>
+            <div class="space-y-1">
+              <div class="text-sm font-medium text-gray-500">Request Timeline</div>
+              <div class="space-y-2">
+                <div class="flex items-center gap-2 text-gray-900">
+                  <UIcon name="i-heroicons-clock" class="w-4 h-4 text-gray-400"/>
+                  <span class="text-sm">Requested: {{ formatDate(request.requestedAt) }}</span>
+                </div>
+                <div v-if="request.status === 'Accepted'" class="flex items-center gap-2 text-gray-900">
+                  <UIcon name="i-heroicons-check-circle" class="w-4 h-4 text-green-500"/>
+                  <span class="text-sm">Accepted: {{ formatDate(request.acceptedAt) }}</span>
+                </div>
+              </div>
             </div>
-            <div v-if="request.status === 'Accepted'">
-              <div class="text-sm text-gray-500">Accepted At</div>
-              <div class="font-medium">{{ formatDate(request.acceptedAt) }}</div>
-            </div>
-            <div v-if="request.status === 'Accepted'">
-              <div class="text-sm text-gray-500">Invitation Status</div>
+            <div v-if="request.status === 'Accepted'" class="col-span-2 space-y-1">
+              <div class="text-sm font-medium text-gray-500">Invitation Status</div>
               <UBadge
                 :color="getInvitationStatusColor(request.invitationStatus)"
-                size="sm"
+                size="md"
                 variant="soft"
+                class="px-2.5"
               >
-                {{ request.invitationStatus || 'Not Sent' }}
+                <div class="flex items-center gap-1.5">
+                  <UIcon
+                    :name="getInvitationStatusIcon(request.invitationStatus)"
+                    class="w-4 h-4"
+                  />
+                  {{ request.invitationStatus || 'Not Sent' }}
+                </div>
               </UBadge>
             </div>
           </div>
@@ -72,11 +152,12 @@
       </div>
 
       <template #footer>
-        <div class="flex justify-end gap-3">
+        <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
           <UButton
             color="gray"
             variant="ghost"
             @click="isOpen = false"
+            class="px-4"
           >
             Close
           </UButton>
@@ -85,13 +166,21 @@
               color="red"
               variant="soft"
               @click="emit('reject', request)"
+              class="px-4"
             >
+              <template #leading>
+                <UIcon name="i-heroicons-x-mark" />
+              </template>
               Reject
             </UButton>
             <UButton
               color="primary"
               @click="emit('accept', request)"
+              class="px-4"
             >
+              <template #leading>
+                <UIcon name="i-heroicons-check" />
+              </template>
               Accept
             </UButton>
           </template>
@@ -102,18 +191,7 @@
 </template>
 
 <script setup lang="ts">
-interface JoinRequest {
-  id: number;
-  name: string;
-  email: string;
-  grade: number;
-  contactNumber: string;
-  referralSource: string;
-  status: 'Pending' | 'Accepted' | 'Rejected';
-  requestedAt: string;
-  acceptedAt: string | null;
-  invitationStatus: string | null;
-}
+import type { JoinRequest } from '~/composables/useJoinRequests'
 
 const props = defineProps<{
   modelValue: boolean;
@@ -142,6 +220,20 @@ const formatDate = (dateString: string | null) => {
   })
 }
 
+const formatDateRelative = (dateString: string) => {
+  const date = new Date(dateString)
+  const now = new Date()
+  const diffTime = Math.abs(now.getTime() - date.getTime())
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
+  
+  if (diffDays === 0) return 'today'
+  if (diffDays === 1) return 'yesterday'
+  if (diffDays < 7) return `${diffDays} days ago`
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`
+  if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`
+  return `${Math.floor(diffDays / 365)} years ago`
+}
+
 type StatusColor = 'yellow' | 'green' | 'red' | 'blue' | 'gray';
 
 const getStatusColor = (status: JoinRequest['status']): StatusColor => {
@@ -153,12 +245,34 @@ const getStatusColor = (status: JoinRequest['status']): StatusColor => {
   return colors[status] || 'gray'
 }
 
-const getInvitationStatusColor = (status: string | null): StatusColor => {
-  const colors: Record<string, StatusColor> = {
+const getStatusIcon = (status: JoinRequest['status']): string => {
+  const icons: Record<JoinRequest['status'], string> = {
+    'Pending': 'i-heroicons-clock',
+    'Accepted': 'i-heroicons-check-circle',
+    'Rejected': 'i-heroicons-x-circle'
+  }
+  return icons[status] || 'i-heroicons-question-mark-circle'
+}
+
+const getInvitationStatusColor = (status: JoinRequest['invitationStatus']): StatusColor => {
+  const colors: Record<NonNullable<JoinRequest['invitationStatus']>, StatusColor> = {
     'Sent': 'blue',
     'Accepted': 'green',
     'Expired': 'yellow'
   }
-  return status ? (colors[status] || 'gray') : 'gray'
+  return status ? colors[status] || 'gray' : 'gray'
+}
+
+const getInvitationStatusIcon = (status: JoinRequest['invitationStatus']): string => {
+  const icons: Record<NonNullable<JoinRequest['invitationStatus']>, string> = {
+    'Sent': 'i-heroicons-envelope',
+    'Accepted': 'i-heroicons-check-circle',
+    'Expired': 'i-heroicons-clock'
+  }
+  return status ? icons[status] || 'i-heroicons-minus-circle' : 'i-heroicons-minus-circle'
+}
+
+const copyToClipboard = (text: string) => {
+  navigator.clipboard.writeText(text)
 }
 </script>
