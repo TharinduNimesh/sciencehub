@@ -3,7 +3,7 @@ const rewardsImage = `/images/image01.jpg`
 </script>
 
 <template>
-  <section class="relative min-h-[80vh] flex items-center">
+  <section class="relative min-h-[80vh] flex items-center py-10">
     <!-- Background Image with Overlay -->
     <div class="absolute inset-0">
       <img

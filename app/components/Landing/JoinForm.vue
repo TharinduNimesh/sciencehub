@@ -98,14 +98,13 @@
                       class="bg-white/50"
                     />
                   </UFormGroup>
-
-                  <div class="flex items-center justify-between pt-6">
-                    <p class="text-sm text-gray-500">* All fields are required</p>
-                    <PrimaryButton type="submit" size="lg">
+                    <div class="flex flex-col sm:flex-row items-center gap-4 sm:justify-between pt-6">
+                    <p class="text-sm text-gray-500 order-2 sm:order-1">* All fields are required</p>
+                    <PrimaryButton type="submit" size="lg" class="w-full sm:w-auto order-1 sm:order-2">
                       Submit Application
                       <UIcon name="i-heroicons-arrow-right" class="ml-2" />
                     </PrimaryButton>
-                  </div>
+                    </div>
                 </form>
               </div>
             </div>
