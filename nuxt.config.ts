@@ -7,10 +7,33 @@ export default defineNuxtConfig({
     '@pinia/nuxt',
     '@nuxtjs/supabase',
     'pinia-plugin-persistedstate',
-    '@nuxt/image'
+    '@nuxt/image',
+    '@nuxtjs/seo'
   ],
 
-  // Nuxt 4.0
+  site: {
+    url: 'https://sciencehub.lk',
+    name: 'ScienceHub',
+    description: 'Your gateway to advanced science education and resources. Learn from experienced educators including our lead tutor, Chathura Nellampitiya, who specializes in delivering comprehensive science education.',
+    defaultLocale: 'en',
+    identity: {
+      type: 'Organization'
+    },
+    twitter: '@sciencehub',
+    author: {
+      name: 'Chathura Nellampitiya',
+      role: 'Lead Science Tutor'
+    }
+  },
+
+  sitemap: {
+    enabled: true,
+  },
+
+  robots: {
+    enabled: true,
+  },
+
   future: {
     compatibilityVersion: 4
   },

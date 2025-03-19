@@ -32,8 +32,15 @@ import JoinForm from "@/components/Landing/JoinForm.vue";
 import Footer from "@/components/Landing/Footer.vue";
 import AOS from "aos";
 import { onMounted } from "vue";
-  
+
 onMounted(() => {
   AOS.init();
 });
+
+useSeoMeta({
+  title: 'ScienceHub - Advanced Science Education Platform',
+  description: 'Join ScienceHub for an innovative learning experience in science education. Access quality resources, interactive lessons, and expert guidance from our lead tutor Chathura Nellampitiya.',
+  ogImage: '/og-image.webp',
+  twitterCard: 'summary_large_image',
+})
 </script>

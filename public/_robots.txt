@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Allow: /about
+Allow: /resources
+Allow: /contact
+
+Disallow: /auth/*
+Disallow: /console/*
+Disallow: /api/*
+
+Sitemap: https://sciencehub.com/sitemap.xml
