@@ -14,26 +14,34 @@
     ]">
       <nav class="flex items-center justify-between">
         <div class="flex items-center space-x-2">
-          <img src="/logo.png" alt="ScienceLab Logo" class="h-8 w-auto">
+          <img src="/logo.png" alt="ScienceHub Logo" class="h-8 w-auto">
           <span class="font-bold text-xl">SCIENCE<span
-              class="bg-gradient-to-r from-violet-600 via-fuchsia-500 to-indigo-400 text-transparent bg-clip-text">LAB</span></span>
+              class="bg-gradient-to-r from-violet-600 via-fuchsia-500 to-indigo-400 text-transparent bg-clip-text">HUB</span></span>
         </div>
 
         <div class="hidden md:flex items-center space-x-8">
-          <a href="#features" class="hover:text-primary-600">Features</a>
-          <a href="#pricing" class="hover:text-primary-600">Pricing</a>
-          <a href="#about" class="hover:text-primary-600">About</a>
-          <a href="#contact" class="hover:text-primary-600">Contact</a>
+          <button @click="scrollToSection('features')" class="hover:text-primary-600">Features</button>
+          <button @click="scrollToSection('rewards')" class="hover:text-primary-600">Rewards</button>
+          <button @click="scrollToSection('about')" class="hover:text-primary-600">About Me</button>
         </div>
 
         <div class="flex items-center space-x-4">
-          <NuxtLink to="/auth/sign-in">
-            <SecondaryButton size="sm">Sign In</SecondaryButton>
-          </NuxtLink>
+          <template v-if="!authStore.isAuthenticated">
+            <NuxtLink to="/auth/sign-in">
+              <SecondaryButton size="sm">Sign In</SecondaryButton>
+            </NuxtLink>
 
-          <PrimaryButton size="sm">
-            Join Now
-          </PrimaryButton>
+            <PrimaryButton @click="scrollToSection('join-now')" size="sm">
+              Join Now
+            </PrimaryButton>
+          </template>
+          <template v-else>
+            <NuxtLink to="/console/dashboard">
+              <PrimaryButton size="sm">
+                Dashboard
+              </PrimaryButton>
+            </NuxtLink>
+          </template>
         </div>
       </nav>
     </header>
@@ -45,7 +53,10 @@ import { useWindowScroll } from '@vueuse/core'
 import { computed } from 'vue'
 import PrimaryButton from '@/components/Landing/PrimaryButton.vue'
 import SecondaryButton from '@/components/Landing/SecondaryButton.vue'
+import { scrollToSection } from '@/lib/utils'
+import { useAuthStore } from '@/stores/auth'
 
 const { y } = useWindowScroll()
-const isScrolled = computed(() => y.value > 50) // Increased threshold for better effect
+const isScrolled = computed(() => y.value > 50)
+const authStore = useAuthStore()
 </script>

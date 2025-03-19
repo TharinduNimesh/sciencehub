@@ -6,7 +6,8 @@ export default defineNuxtConfig({
     '@nuxt/ui',
     '@pinia/nuxt',
     '@nuxtjs/supabase',
-    'pinia-plugin-persistedstate'
+    'pinia-plugin-persistedstate',
+    '@nuxt/image'
   ],
 
   // Nuxt 4.0

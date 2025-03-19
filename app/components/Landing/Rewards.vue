@@ -1,13 +1,17 @@
+<script setup>
+const rewardsImage = `/images/image01.jpg`
+</script>
+
 <template>
   <section class="relative min-h-[80vh] flex items-center">
     <!-- Background Image with Overlay -->
     <div class="absolute inset-0">
       <img
-        src="/images/image01.jpg"
+        :src="rewardsImage"
         alt="Rewards Background"
         class="w-full h-full object-cover"
       />
-      <div class="absolute inset-0 bg-gradient-to-r from-black/75 to-black/70 backdrop-blur-sm"></div>
+      <div class="absolute inset-0 bg-gradient-to-r from-black/40 to-black/50 backdrop-blur-sm"></div>
     </div>
 
     <!-- Content -->
@@ -31,8 +35,8 @@
           <div class="group">
             <div class="p-8 rounded-2xl bg-white/10 backdrop-blur-lg border border-white/20 transition-all duration-300 hover:transform hover:-translate-y-2 hover:bg-white/15">
               <div class="mb-6">
-                <div class="w-16 h-16 rounded-full bg-indigo-900/30 flex items-center justify-center mx-auto backdrop-blur-lg">
-                  <UIcon name="i-heroicons-star" class="text-3xl text-indigo-400" />
+                <div class="w-16 h-16 rounded-full bg-white/30 flex items-center justify-center mx-auto backdrop-blur-lg">
+                  <UIcon name="i-heroicons-star" class="text-3xl text-white" />
                 </div>
               </div>
               <h3 class="text-2xl font-bold text-center mb-4 text-white">Earn Stars</h3>
@@ -46,8 +50,8 @@
           <div class="group">
             <div class="p-8 rounded-2xl bg-white/10 backdrop-blur-lg border border-white/20 transition-all duration-300 hover:transform hover:-translate-y-2 hover:bg-white/15">
               <div class="mb-6">
-                <div class="w-16 h-16 rounded-full bg-indigo-900/30 flex items-center justify-center mx-auto backdrop-blur-lg">
-                  <UIcon name="i-heroicons-trophy" class="text-3xl text-indigo-400"/>
+                <div class="w-16 h-16 rounded-full bg-white/30 flex items-center justify-center mx-auto backdrop-blur-lg">
+                  <UIcon name="i-heroicons-trophy" class="text-3xl text-white"/>
                 </div>
               </div>
               <h3 class="text-2xl font-bold text-center mb-4 text-white">Redeem Rewards</h3>
