@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="min-w-[800px]">
     <UTable
       :rows="rows"
       :columns="columns"
@@ -42,11 +42,14 @@
       </template>
 
       <template #actions-data="{ row }">
-        <UDropdown :items="getActionItems(row)" :popper="{ placement: 'bottom-end' }">
+        <UDropdown
+          :items="getActionItems(row)"
+        >
           <UButton
             color="gray"
             variant="ghost"
             icon="i-heroicons-ellipsis-horizontal"
+            :ui="{ rounded: 'rounded-full' }"
           />
         </UDropdown>
       </template>
@@ -138,7 +141,6 @@ const getActionItems = (row: JoinRequest) => {
       [{
         label: 'Delete',
         icon: 'i-heroicons-trash',
-        color: 'red',
         click: () => emit('delete', row)
       }]
     ]
@@ -149,16 +151,15 @@ const getActionItems = (row: JoinRequest) => {
     [{
       label: 'Delete',
       icon: 'i-heroicons-trash',
-      color: 'red',
       click: () => emit('delete', row)
     }]
   ]
 }
 
 const emit = defineEmits<{
-  view: [request: JoinRequest]
-  accept: [request: JoinRequest]
-  reject: [request: JoinRequest]
-  delete: [request: JoinRequest]
+  view: [request: JoinRequest];
+  accept: [request: JoinRequest];
+  reject: [request: JoinRequest];
+  delete: [request: JoinRequest];
 }>();
 </script>

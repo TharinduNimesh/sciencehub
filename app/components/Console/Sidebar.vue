@@ -80,12 +80,19 @@
 <script setup lang="ts">
 import { useSidebarStore } from '~/stores/sidebar'
 import { useAuthStore } from '~/stores/auth'
-import { computed, onMounted, onUnmounted } from 'vue'
+import { computed, onMounted, onUnmounted, watch } from 'vue'
 import { navSections, type Role } from '~/config/navigation'
 
 const route = useRoute()
 const sidebarStore = useSidebarStore()
 const authStore = useAuthStore()
+
+// Watch for route changes to close sidebar on mobile
+watch(() => route.path, () => {
+  if (sidebarStore.isMobile && sidebarStore.isOpen) {
+    sidebarStore.toggle()
+  }
+})
 
 // Computed property to filter sections based on user role
 const filteredNavSections = computed(() => {

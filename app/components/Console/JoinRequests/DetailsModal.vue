@@ -2,29 +2,23 @@
   <UModal
     v-model="isOpen"
     :ui="{ 
-      width: 'sm:max-w-2xl',
-      container: 'items-start sm:items-center',
-      overlay: { 
-        background: 'bg-gray-950/50 backdrop-blur-sm',
-        transition: { 
-          enter: 'ease-out duration-300',
-          enterFrom: 'opacity-0',
-          enterTo: 'opacity-100',
-          leave: 'ease-in duration-200',
-          leaveFrom: 'opacity-100',
-          leaveTo: 'opacity-0'
-        }
-      },
-      base: 'relative overflow-hidden',
+      width: 'w-full sm:max-w-2xl',
+      container: 'items-end sm:items-center',
+      wrapper: 'sm:p-4',
+      base: 'relative overflow-hidden sm:rounded-2xl rounded-b-none rounded-t-2xl',
+      padding: 'p-0',
       background: 'bg-gradient-to-b from-white to-gray-50/80',
       ring: 'ring-1 ring-gray-200',
-      rounded: 'rounded-2xl'
+      rounded: 'sm:rounded-2xl rounded-t-2xl'
     }"
   >
-    <UCard v-if="request" class="shadow-none border-none">
+    <UCard v-if="request" class="shadow-none border-none max-h-[90vh] sm:max-h-[85vh] overflow-y-auto">
+      <!-- Drag handle for mobile -->
+      <div class="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-4 sm:hidden"></div>
+      
       <template #header>
         <div class="space-y-4 pb-4 border-b border-gray-100">
-          <div class="flex items-center justify-between">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div class="flex items-center gap-3">
               <UAvatar
                 :text="request.name.split(' ').map(n => n[0]).join('')"
@@ -45,7 +39,7 @@
               :color="getStatusColor(request.status)"
               size="lg"
               variant="soft"
-              class="px-3 py-1"
+              class="px-3 py-1 self-start sm:self-center"
             >
               <div class="flex items-center gap-1.5">
                 <UIcon
@@ -66,7 +60,7 @@
             <UIcon name="i-heroicons-user-circle" class="w-5 h-5 text-gray-400"/>
             Student Information
           </h4>
-          <div class="grid grid-cols-2 gap-6">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div class="space-y-1">
               <div class="text-sm font-medium text-gray-500">Full Name</div>
               <div class="font-medium text-gray-900">{{ request.name }}</div>
@@ -112,7 +106,7 @@
             <UIcon name="i-heroicons-information-circle" class="w-5 h-5 text-gray-400"/>
             Additional Information
           </h4>
-          <div class="grid grid-cols-2 gap-6">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div class="space-y-1">
               <div class="text-sm font-medium text-gray-500">How did they find us?</div>
               <div class="font-medium text-gray-900">{{ request.referralSource }}</div>
@@ -152,12 +146,12 @@
       </div>
 
       <template #footer>
-        <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
+        <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4 border-t border-gray-100">
           <UButton
             color="gray"
             variant="ghost"
             @click="isOpen = false"
-            class="px-4"
+            class="w-full sm:w-auto px-4"
           >
             Close
           </UButton>
@@ -166,7 +160,7 @@
               color="red"
               variant="soft"
               @click="emit('reject', request)"
-              class="px-4"
+              class="w-full sm:w-auto px-4"
             >
               <template #leading>
                 <UIcon name="i-heroicons-x-mark" />
@@ -176,7 +170,7 @@
             <UButton
               color="primary"
               @click="emit('accept', request)"
-              class="px-4"
+              class="w-full sm:w-auto px-4"
             >
               <template #leading>
                 <UIcon name="i-heroicons-check" />

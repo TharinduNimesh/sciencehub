@@ -52,9 +52,7 @@ export const useJoinRequests = () => {
   const createJoinRequest = async (data: Omit<JoinRequestDB, 'id' | 'created_at'>) => {
     const { error, data: newRequest } = await supabase
       .from('join_requests')
-      .insert(data)
-      .select()
-      .single()
+      .insert(data);
 
     if (error) {
       throw error
@@ -90,7 +88,7 @@ export const useJoinRequests = () => {
         grade: request.grade,
         contactNumber: request.mobile,
         referralSource: request.how_did_find_us,
-        status: status?.status === null ? 'Pending' : status.status ? 'Accepted' : 'Rejected',
+        status: !status || status.status === null ? 'Pending' : status.status ? 'Accepted' : 'Rejected',
         requestedAt: request.created_at,
         acceptedAt: status?.status ? status.updated_at : null,
         invitationStatus: null
@@ -112,9 +110,28 @@ export const useJoinRequests = () => {
     }
   }
 
+  const deleteJoinRequest = async (id: number) => {
+    // Delete from join_request_status first (if exists)
+    const { error: statusError } = await supabase
+      .from('join_request_status')
+      .delete()
+      .eq('id', id)
+
+    // Even if there's an error deleting status (might not exist), proceed with deleting the request
+    const { error } = await supabase
+      .from('join_requests')
+      .delete()
+      .eq('id', id)
+
+    if (error) {
+      throw error
+    }
+  }
+
   return {
     createJoinRequest,
     fetchJoinRequests,
-    updateRequestStatus
+    updateRequestStatus,
+    deleteJoinRequest
   }
 }
