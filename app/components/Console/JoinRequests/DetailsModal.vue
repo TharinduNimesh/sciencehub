@@ -3,19 +3,19 @@
     v-model="isOpen"
     :ui="{ 
       width: 'w-full sm:max-w-2xl',
-      container: 'items-end sm:items-center',
-      wrapper: 'sm:p-4',
-      base: 'relative overflow-hidden sm:rounded-2xl rounded-b-none rounded-t-2xl',
+      container: 'items-center',
+      wrapper: 'p-4',
+      base: 'relative overflow-hidden rounded-2xl',
       padding: 'p-0',
       background: 'bg-gradient-to-b from-white to-gray-50/80',
       ring: 'ring-1 ring-gray-200',
-      rounded: 'sm:rounded-2xl rounded-t-2xl'
+      rounded: 'rounded-2xl'
     }"
   >
-    <UCard v-if="request" class="shadow-none border-none max-h-[90vh] sm:max-h-[85vh] overflow-y-auto">
-      <!-- Drag handle for mobile -->
-      <div class="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-4 sm:hidden"></div>
-      
+    <UCard
+      v-if="request"
+      class="shadow-none border-none max-h-[90vh] sm:max-h-[85vh] overflow-y-auto"
+    >
       <template #header>
         <div class="space-y-4 pb-4 border-b border-gray-100">
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -270,3 +270,16 @@ const copyToClipboard = (text: string) => {
   navigator.clipboard.writeText(text)
 }
 </script>
+
+<style scoped>
+.modal-card-enter-active,
+.modal-card-leave-active {
+  transition: transform 0.3s ease;
+}
+
+.modal-card-enter-from,
+.modal-card-leave-to {
+  transform: translateY(20px);
+  opacity: 0;
+}
+</style>
