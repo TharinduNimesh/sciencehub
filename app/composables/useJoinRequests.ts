@@ -1,5 +1,3 @@
-import { useSupabaseClient } from '#imports'
-
 interface JoinRequestDB {
   id: number
   name: string
@@ -62,38 +60,35 @@ export const useJoinRequests = () => {
   }
 
   const fetchJoinRequests = async (): Promise<JoinRequest[]> => {
-    const { data: requests, error: requestsError } = await supabase
+    const { data: requests, error } = await supabase
       .from('join_requests')
-      .select('*')
+      .select(`
+        *,
+        join_request_status (
+          status,
+          updated_at
+        )
+      `)
 
-    if (requestsError) {
-      throw requestsError
-    }
-
-    const { data: statuses, error: statusesError } = await supabase
-      .from('join_request_status')
-      .select('*')
-
-    if (statusesError) {
-      throw statusesError
+    if (error) {
+      throw error
     }
 
     // Map DB data to frontend format
-    return requests.map(request => {
-      const status = statuses.find(s => s.id === request.id)
-      return {
-        id: request.id,
-        name: request.name,
-        email: request.email,
-        grade: request.grade,
-        contactNumber: request.mobile,
-        referralSource: request.how_did_find_us,
-        status: !status || status.status === null ? 'Pending' : status.status ? 'Accepted' : 'Rejected',
-        requestedAt: request.created_at,
-        acceptedAt: status?.status ? status.updated_at : null,
-        invitationStatus: null
-      }
-    })
+    return requests.map(request => ({
+      id: request.id,
+      name: request.name,
+      email: request.email,
+      grade: request.grade,
+      contactNumber: request.mobile,
+      referralSource: request.how_did_find_us,
+      status: !request.join_request_status || request.join_request_status.status === null 
+        ? 'Pending' 
+        : request.join_request_status.status ? 'Accepted' : 'Rejected',
+      requestedAt: request.created_at,
+      acceptedAt: request.join_request_status?.status ? request.join_request_status.updated_at : null,
+      invitationStatus: null
+    }))
   }
 
   const updateRequestStatus = async (id: number, status: boolean) => {

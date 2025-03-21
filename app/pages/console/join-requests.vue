@@ -1,26 +1,25 @@
 <template>
   <div class="h-full">
-    <div class="bg-white rounded-lg shadow-sm h-full">
+    <div class="bg-white rounded-lg shadow-sm">
       <div class="p-6 lg:p-8 space-y-6">
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
           <div>
             <h2 class="text-xl font-semibold">Join Requests</h2>
             <p class="text-sm text-gray-500 mt-1">Manage student join requests</p>
           </div>
-
-          <div class="flex w-full sm:w-auto gap-3">
+            <div class="flex flex-col-reverse sm:flex-row sm:w-auto gap-3 w-full">
             <UButton icon="i-heroicons-funnel" :ui="{ rounded: 'rounded-full' }"
               :color="showFilters ? 'primary' : 'gray'" :variant="showFilters ? 'soft' : 'ghost'"
-              class="flex-1 sm:flex-none"
+              :block="isMobile"
               @click="showFilters = !showFilters">
               Filters
             </UButton>
             <UButton :ui="{ rounded: 'rounded-full' }" color="primary" icon="i-heroicons-arrow-path"
-              class="flex-1 sm:flex-none"
+              :block="isMobile"
               @click="refreshData" :loading="isRefreshing">
               Refresh
             </UButton>
-          </div>
+            </div>
         </div>
 
         <ConsoleJoinRequestsFilters v-show="showFilters" :filters="filters" @update:filters="updateFilters" />
@@ -81,6 +80,8 @@ import { ref, computed, onMounted } from 'vue'
 definePageMeta({
   layout: 'console'
 })
+
+const { isMobile } = useIsMobile()
 
 const showFilters = ref(false)
 const isRefreshing = ref(false)
