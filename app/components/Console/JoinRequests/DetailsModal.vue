@@ -124,22 +124,30 @@
                 </div>
               </div>
             </div>
-            <div v-if="request.status === 'Accepted'" class="col-span-2 space-y-1">
-              <div class="text-sm font-medium text-gray-500">Invitation Status</div>
-              <UBadge
-                :color="getInvitationStatusColor(request.invitationStatus)"
-                size="md"
-                variant="soft"
-                class="px-2.5"
-              >
-                <div class="flex items-center gap-1.5">
-                  <UIcon
-                    :name="getInvitationStatusIcon(request.invitationStatus)"
-                    class="w-4 h-4"
-                  />
-                  {{ request.invitationStatus || 'Not Sent' }}
+            <div v-if="request.status === 'Accepted'" class="col-span-2 space-y-2">
+              <div class="text-sm font-medium text-gray-500">Invitation Details</div>
+              <div class="flex items-center gap-4">
+                <UBadge
+                  :color="getInvitationStatusColor(request.invitationStatus)"
+                  size="md"
+                  variant="soft"
+                  class="px-2.5"
+                >
+                  <div class="flex items-center gap-1.5">
+                    <UIcon
+                      :name="getInvitationStatusIcon(request.invitationStatus)"
+                      class="w-4 h-4"
+                    />
+                    {{ request.invitationStatus || 'Not Sent' }}
+                  </div>
+                </UBadge>
+                <div v-if="request.invitationStatus === 'Expired'" class="text-sm text-gray-500">
+                  <span class="font-medium">Note:</span> You can accept the request again to send a new invitation
                 </div>
-              </UBadge>
+                <div v-if="request.invitationStatus === 'Deleted'" class="text-sm text-gray-500">
+                  <span class="font-medium">Note:</span> The invitation has been deleted. You can accept the request again to send a new invitation
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -252,7 +260,8 @@ const getInvitationStatusColor = (status: JoinRequest['invitationStatus']): Stat
   const colors: Record<NonNullable<JoinRequest['invitationStatus']>, StatusColor> = {
     'Sent': 'blue',
     'Accepted': 'green',
-    'Expired': 'yellow'
+    'Expired': 'yellow',
+    'Deleted': 'red'
   }
   return status ? colors[status] || 'gray' : 'gray'
 }
@@ -261,7 +270,8 @@ const getInvitationStatusIcon = (status: JoinRequest['invitationStatus']): strin
   const icons: Record<NonNullable<JoinRequest['invitationStatus']>, string> = {
     'Sent': 'i-heroicons-envelope',
     'Accepted': 'i-heroicons-check-circle',
-    'Expired': 'i-heroicons-clock'
+    'Expired': 'i-heroicons-clock',
+    'Deleted': 'i-heroicons-trash'
   }
   return status ? icons[status] || 'i-heroicons-minus-circle' : 'i-heroicons-minus-circle'
 }

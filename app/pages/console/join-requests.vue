@@ -27,8 +27,8 @@
         <div class="space-y-2">
           <div class="border border-gray-200 rounded-xl shadow-sm overflow-hidden">
             <div class="overflow-x-auto">
-              <ConsoleJoinRequestsTable :rows="paginatedRequests" :loading="isRefreshing" @view="handleViewRequest"
-                @accept="handleAcceptRequest" @reject="handleRejectRequest" @delete="handleDeleteRequest" />
+              <ConsoleJoinRequestsTable :rows="paginatedRequests" :loading="isRefreshing" :processing-ids="processingIds"
+                @view="handleViewRequest" @accept="handleAcceptRequest" @reject="handleRejectRequest" @delete="handleDeleteRequest" />
             </div>
           </div>
 
@@ -75,6 +75,7 @@
 <script setup lang="ts">
 import { useJoinRequests, type JoinRequest } from '~/composables/useJoinRequests'
 import { useJoinRequestFilters } from '~/composables/useJoinRequestFilters'
+import { useInvitations } from '~/composables/useInvitations'
 import { ref, computed, onMounted } from 'vue'
 import { isMobileScreen } from '~/lib/utils'
 
@@ -89,9 +90,11 @@ const isDetailsModalOpen = ref(false)
 const selectedRequest = ref<JoinRequest | null>(null)
 const page = ref(1)
 const pageSize = 8
+const processingIds = ref<number[]>([]) // Add this to track processing states
 
 const { filterRequests, filters } = useJoinRequestFilters()
 const { fetchJoinRequests, updateRequestStatus, deleteJoinRequest } = useJoinRequests()
+const { createInvitation } = useInvitations()
 
 const updateFilters = (newFilters: any) => {
   Object.assign(filters, newFilters)
@@ -129,26 +132,61 @@ const handleViewRequest = (request: JoinRequest) => {
   isDetailsModalOpen.value = true
 }
 
-const handleAcceptRequest = async (request: JoinRequest) => {
+// Helper to manage processing state
+const withProcessing = async (id: number, action: () => Promise<void>) => {
+  processingIds.value.push(id)
   try {
-    await updateRequestStatus(request.id, true)
-    await refreshData()
-  } catch (error) {
-    console.error('Error accepting request:', error)
+    await action()
   } finally {
-    isDetailsModalOpen.value = false
+    processingIds.value = processingIds.value.filter(pid => pid !== id)
   }
 }
 
+// Modify the handlers to use withProcessing
+const handleAcceptRequest = async (request: JoinRequest) => {
+  await withProcessing(request.id, async () => {
+    try {
+      await createInvitation({
+        email: request.email,
+        name: request.name,
+        grade: request.grade,
+        role: 'STUDENT',
+        expiresIn: 7
+      })
+
+      await updateRequestStatus(request.id, true)
+      
+      toast.add({
+        title: 'Success',
+        description: 'Join request accepted and invitation sent',
+        color: 'green'
+      })
+
+      await refreshData()
+    } catch (error) {
+      console.error('Error processing request:', error)
+      toast.add({
+        title: 'Error',
+        description: 'Failed to process join request',
+        color: 'red'
+      })
+    } finally {
+      isDetailsModalOpen.value = false
+    }
+  })
+}
+
 const handleRejectRequest = async (request: JoinRequest) => {
-  try {
-    await updateRequestStatus(request.id, false)
-    await refreshData()
-  } catch (error) {
-    console.error('Error rejecting request:', error)
-  } finally {
-    isDetailsModalOpen.value = false
-  }
+  await withProcessing(request.id, async () => {
+    try {
+      await updateRequestStatus(request.id, false)
+      await refreshData()
+    } catch (error) {
+      console.error('Error rejecting request:', error)
+    } finally {
+      isDetailsModalOpen.value = false
+    }
+  })
 }
 
 const isDeleteConfirmOpen = ref(false)
@@ -163,25 +201,27 @@ const handleDeleteRequest = async (request: JoinRequest) => {
 const handleConfirmDelete = async () => {
   if (!requestToDelete.value) return
 
-  try {
-    await deleteJoinRequest(requestToDelete.value.id)
-    await refreshData()
-    toast.add({
-      title: 'Success',
-      description: 'Join request deleted successfully',
-      color: 'green'
-    })
-  } catch (error) {
-    console.error('Error deleting request:', error)
-    toast.add({
-      title: 'Error',
-      description: 'Failed to delete join request',
-      color: 'red'
-    })
-  } finally {
-    isDeleteConfirmOpen.value = false
-    requestToDelete.value = null
-  }
+  await withProcessing(requestToDelete.value.id, async () => {
+    try {
+      await deleteJoinRequest(requestToDelete.value!.id)
+      await refreshData()
+      toast.add({
+        title: 'Success',
+        description: 'Join request deleted successfully',
+        color: 'green'
+      })
+    } catch (error) {
+      console.error('Error deleting request:', error)
+      toast.add({
+        title: 'Error',
+        description: 'Failed to delete join request',
+        color: 'red'
+      })
+    } finally {
+      isDeleteConfirmOpen.value = false
+      requestToDelete.value = null
+    }
+  })
 }
 
 // Add toast to composables

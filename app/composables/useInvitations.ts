@@ -76,6 +76,39 @@ export const useInvitations = () => {
     }
   }
 
+  const validateInvitation = async (email: string) => {
+    // Check if there's an invitation
+    const { data: existingInvitation, error: fetchError } = await supabase
+      .from('invitations')
+      .select('id')
+      .eq('email', email)
+      .single()
+
+    if (fetchError && fetchError.code !== 'PGRST116') {
+      // Handle error if not due to no existing invitation
+      throw fetchError
+    }
+    
+    if (existingInvitation) {
+      throw new Error('An invitation already exists for this email.')
+    }
+
+    // Check if user already exists
+    const { data: isUserAlreadyRegistered, error: isUserAlreadyRegisteredError } 
+      = await supabase
+      .rpc('is_user_already_registered', {
+        email_input: email
+    })
+
+    if (isUserAlreadyRegisteredError) {
+      throw isUserAlreadyRegisteredError
+    }
+
+    if (isUserAlreadyRegistered) {
+      throw new Error('A user already exists with this email.')
+    }
+  }
+
   const createInvitation = async (data: {
     email: string
     name: string
@@ -83,10 +116,13 @@ export const useInvitations = () => {
     expiresIn?: number
     role?: 'STUDENT' | 'MODERATOR'
   }) => {
+    // Validate the invitation first
+    await validateInvitation(data.email)
+
     const expiresAt = calculateExpirationDate(data.expiresIn || 7)
     const metadata = data.grade ? { grade: data.grade } : {}
 
-    // First create the invitation
+    // Create the invitation
     const { error: invitationError, data: newInvitation } = await supabase
       .from('invitations')
       .insert({
@@ -245,6 +281,7 @@ export const useInvitations = () => {
     updateInvitationStatus,
     checkExpiredInvitations,
     deleteInvitation,
-    sendInvitationEmail // Export for manual resend capability
+    sendInvitationEmail, // Export for manual resend capability
+    validateInvitation // Export for potential reuse
   }
 }
