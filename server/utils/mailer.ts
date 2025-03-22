@@ -1,15 +1,18 @@
 import nodemailer from 'nodemailer';
 
 // Create reusable transporter
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: parseInt(process.env.SMTP_PORT || '587'),
-  secure: process.env.SMTP_SECURE === 'true',
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
+const getTransporter = () => {
+  const config = useRuntimeConfig();
+  return nodemailer.createTransport({
+    host: config.smtp.host,
+    port: 587,
+    secure: false,
+    auth: {
+      user: config.smtp.user,
+      pass: config.smtp.pass,
+    },
+  });
+};
 
 const getTemplate = async (template: string): Promise<string> => {
   const isDev = process.env.NODE_ENV === 'development';
@@ -36,6 +39,7 @@ interface SendMailOptions {
 
 export async function sendMail({ to, subject, template, context }: SendMailOptions) {
   try {
+    const config = useRuntimeConfig();
     // Fetch template
     let html = await getTemplate(template);
 
@@ -44,9 +48,11 @@ export async function sendMail({ to, subject, template, context }: SendMailOptio
       html = html.replace(new RegExp(`{{${key}}}`, 'g'), value);
     });
 
+    const transporter = getTransporter();
+
     // Send mail
     const info = await transporter.sendMail({
-      from: `"${process.env.SMTP_FROM_NAME}" <${process.env.SMTP_FROM_EMAIL}>`,
+      from: `"${config.smtp.fromName}" <${config.smtp.fromEmail}>`,
       to,
       subject,
       html,

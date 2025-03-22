@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Welcome to ScienceHub - Student Invitation</title>
+    <title>Welcome to ScienceHub - Moderator Invitation</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -21,7 +21,7 @@
         .header {
             text-align: center;
             padding: 30px 20px;
-            background: linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%);
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
             border-radius: 16px;
             margin-bottom: 24px;
         }
@@ -50,11 +50,11 @@
             margin-bottom: 24px;
             font-size: 16px;
         }
-        .grade-badge {
+        .role-badge {
             display: inline-block;
             padding: 6px 12px;
-            background-color: #f6eeff;
-            color: #8646e5;
+            background-color: #ECFDF5;
+            color: #059669;
             border-radius: 9999px;
             font-weight: 600;
             font-size: 14px;
@@ -73,17 +73,17 @@
             position: relative;
         }
         .feature-item:before {
-            content: "";
+            content: "✓";
             position: absolute;
             left: 0;
-            color: #10B981;
+            color: #059669;
             font-weight: bold;
         }
         .button {
             display: inline-block;
             padding: 12px 32px;
-            background-color: #7C3AED;
-            color: #f8fcfd !important;
+            background-color: #059669;
+            color: white;
             text-decoration: none;
             border-radius: 8px;
             font-weight: 600;
@@ -93,7 +93,7 @@
             box-sizing: border-box;
         }
         .button:hover {
-            background-color: #6D28D9;
+            background-color: #047857;
         }
         .expiry-notice {
             background-color: #FEF3F2;
@@ -116,31 +116,29 @@
 <body>
     <div class="container">
         <div class="header">
-            <div style="background: rgba(255, 255, 255, 0.9); width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
-                <img src="https://www.sciencehub.lk/logo.png" alt="ScienceHub Logo" style="width: 50px; height: 50px;">
-            </div>
+            <img src="{{logoUrl}}" alt="ScienceHub Logo" class="logo">
             <h1>Welcome to ScienceHub!</h1>
-            <p>Your Journey in Science Begins Here</p>
+            <p>Join Our Teaching Community</p>
         </div>
 
         <div class="content">
             <div class="welcome-message">
                 <p>Dear {{name}},</p>
-                <p>You've been invited to join ScienceHub as a student! We're excited to have you join our learning community where you'll discover the fascinating world of science through interactive lessons, engaging quizzes, and collaborative learning.</p>
+                <p>You've been invited to join ScienceHub as a moderator! We're excited to have you join our teaching community where you'll help shape the future of science education.</p>
                 
-                <div class="grade-badge">Grade {{grade}}</div>
+                <div class="role-badge">Moderator</div>
             </div>
 
             <ul class="features">
-                <li class="feature-item">✅ Access to recorded lessons and study materials</li>
-                <li class="feature-item">✅ Interactive quizzes and assessments</li>
-                <li class="feature-item">✅ Track your learning progress</li>
-                <li class="feature-item">✅ Connect with teachers and classmates</li>
+                <li class="feature-item">Create and manage course content</li>
+                <li class="feature-item">Monitor student progress and engagement</li>
+                <li class="feature-item">Access advanced teaching tools</li>
+                <li class="feature-item">Collaborate with other educators</li>
             </ul>
 
-            <p>Ready to start your learning journey? Click the button below to create your account:</p>
+            <p>Ready to start teaching? Click the button below to create your account:</p>
             
-            <a href="{{invitationUrl}}" class="button">Get Started Now</a>
+            <a href="{{invitationUrl}}" class="button">Join as Moderator</a>
             
             <div class="expiry-notice">
                 ⚠️ This invitation will expire on {{expiryDate}}. Please make sure to accept it before then.

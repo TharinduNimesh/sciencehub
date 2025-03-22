@@ -53,5 +53,18 @@ export default defineNuxtConfig({
       callback: '/auth/callback',
       exclude: ['/']
     }
+  },
+
+  runtimeConfig: {
+    supabase: {
+      serviceKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+    },
+    smtp: {
+      host: process.env.SMTP_HOST,
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+      fromName: process.env.SMTP_FROM_NAME,
+      fromEmail: process.env.SMTP_FROM_EMAIL,
+    }
   }
 })

@@ -29,6 +29,11 @@
             <USelectMenu v-model="form.grade" :options="gradeOptions" placeholder="Select student's grade"
               value-attribute="value" />
           </UFormGroup>
+
+          <UFormGroup label="Invitation Expires In" required>
+            <USelectMenu v-model="form.expiresIn" :options="expirationOptions" placeholder="Select expiration period"
+              value-attribute="value" />
+          </UFormGroup>
         </form>
       </div>
 
@@ -53,7 +58,12 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
-  'invite': [form: { name: string, email: string, grade: number | undefined }]
+  'invite': [form: { 
+    name: string
+    email: string
+    grade: number | undefined
+    expiresIn: number
+  }]
 }>()
 
 const isOpen = computed({
@@ -61,10 +71,16 @@ const isOpen = computed({
   set: (value) => emit('update:modelValue', value)
 })
 
-const form = ref<{ name: string, email: string, grade: number | undefined }>({
+const form = ref<{ 
+  name: string
+  email: string
+  grade: number | undefined
+  expiresIn: number
+}>({
   name: '',
   email: '',
-  grade: undefined
+  grade: undefined,
+  expiresIn: 7
 })
 
 const gradeOptions = [
@@ -78,12 +94,32 @@ const gradeOptions = [
   { label: 'Grade 13', value: 13 }
 ]
 
+const expirationOptions = [
+  { label: '24 Hours', value: 1 },
+  { label: '3 Days', value: 3 },
+  { label: '7 Days', value: 7 },
+  { label: '14 Days', value: 14 },
+  { label: '30 Days', value: 30 },
+  { label: '60 Days', value: 60 }
+]
+
 const handleInvite = () => {
+  if (!form.value.grade) {
+    useToast().add({
+      title: 'Error',
+      description: 'Please select a grade',
+      icon: 'i-heroicons-x-circle',
+      color: 'red'
+    })
+    return
+  }
+
   emit('invite', form.value)
   form.value = {
     name: '',
     email: '',
-    grade: undefined
+    grade: undefined,
+    expiresIn: 7
   }
   isOpen.value = false
 }

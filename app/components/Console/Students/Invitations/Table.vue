@@ -61,10 +61,10 @@ export interface Invitation {
   grade: number
   invitedAt: string
   invitedBy: string
-  status: 'Pending' | 'Accepted' | 'Expired' | 'Revoked'
+  status: 'Pending' | 'Expired' | 'Revoked' | 'Rejected' | 'Accepted' | 'Used'
 }
 
-type StatusColor = 'yellow' | 'green' | 'gray' | 'red'
+type StatusColor = 'yellow' | 'green' | 'red' | 'gray' | 'blue'
 
 const props = defineProps({
   rows: {
@@ -119,14 +119,16 @@ const formatDate = (date: string) => {
   })
 }
 
-const getStatusColor = (status: string): StatusColor => {
-  const colors: Record<string, StatusColor> = {
+const getStatusColor = (status: Invitation['status']): StatusColor => {
+  const colors: Record<Invitation['status'], StatusColor> = {
     'Pending': 'yellow',
     'Accepted': 'green',
+    'Used': 'blue',
     'Expired': 'gray',
+    'Rejected': 'red',
     'Revoked': 'red'
   }
-  return colors[status] || 'gray'
+  return colors[status]
 }
 
 // Action items for dropdown
@@ -134,8 +136,8 @@ const getActionItems = (row: Invitation) => {
   const items = []
   const actionGroup = []
 
-  // Resend action for Pending, Expired, or Revoked invitations
-  if (['Pending', 'Expired', 'Revoked'].includes(row.status)) {
+  // Resend action for Pending, Expired, Rejected, or Revoked invitations
+  if (['Pending', 'Expired', 'Rejected', 'Revoked'].includes(row.status)) {
     items.push([{
       label: 'Resend Invitation',
       icon: 'i-heroicons-arrow-path',
@@ -143,7 +145,6 @@ const getActionItems = (row: Invitation) => {
     }])
   }
 
-  // Second group - status dependent actions
   // Only Pending invitations can be revoked
   if (row.status === 'Pending') {
     actionGroup.push({
@@ -154,13 +155,15 @@ const getActionItems = (row: Invitation) => {
     })
   }
 
-  // All invitations can be deleted
-  actionGroup.push({
-    label: 'Delete',
-    icon: 'i-heroicons-trash',
-    color: 'red',
-    click: () => emit('delete', row)
-  })
+  // All invitations except Used ones can be deleted
+  if (row.status !== 'Used') {
+    actionGroup.push({
+      label: 'Delete',
+      icon: 'i-heroicons-trash',
+      color: 'red',
+      click: () => emit('delete', row)
+    })
+  }
 
   if (actionGroup.length > 0) {
     items.push(actionGroup)
