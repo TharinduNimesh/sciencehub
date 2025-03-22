@@ -113,17 +113,26 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { isMobileScreen } from '~/lib/utils'
+import type { Invitation } from '~/components/Console/Students/Invitations/Table.vue'
 
 definePageMeta({
   layout: 'console'
 })
 
 const router = useRouter()
-const { isMobile } = useIsMobile()
+const isMobile = ref(isMobileScreen())
 const showFilters = ref(false)
 const isInviteModalOpen = ref(false)
 const page = ref(1)
 const pageSize = 8
+
+// Add resize event listener
+if (process.client) {
+  window.addEventListener('resize', () => {
+    isMobile.value = isMobileScreen()
+  })
+}
 
 // Filter states
 const filters = ref({
@@ -167,7 +176,7 @@ const students = ref([
 
 // Apply filters to students
 const filteredStudents = computed(() => {
-  return students.value.filter(student => {
+  return students.value.filter((student: any) => {
     if (filters.value.search && !student.name.toLowerCase().includes(filters.value.search.toLowerCase())) {
       return false
     }
@@ -196,7 +205,7 @@ const navigateToStudent = (student: any) => {
 
 const handleDeactivate = (student: any) => {
   // Toggle student status
-  const studentToUpdate = students.value.find(s => s.id === student.id)
+  const studentToUpdate = students.value.find((s: any) => s.id === student.id)
   if (studentToUpdate) {
     studentToUpdate.status = studentToUpdate.status === 'Active' ? 'Inactive' : 'Active'
   }
@@ -224,7 +233,7 @@ const updateInvitationFilters = (newFilters: any) => {
 }
 
 // Dummy data for invitations
-const invitations = ref([
+const invitations = ref<Invitation[]>([
   {
     id: 1,
     name: 'Alice Brown',
@@ -256,7 +265,7 @@ const invitations = ref([
 
 // Apply filters to invitations
 const filteredInvitations = computed(() => {
-  return invitations.value.filter(invitation => {
+  return invitations.value.filter((invitation: Invitation) => {
     if (invitationFilters.value.search &&
       !invitation.name.toLowerCase().includes(invitationFilters.value.search.toLowerCase()) &&
       !invitation.email.toLowerCase().includes(invitationFilters.value.search.toLowerCase())) {
@@ -296,19 +305,19 @@ const paginatedInvitations = computed(() => {
 })
 
 // Invitation handlers
-const handleResendInvitation = (invitation: any) => {
+const handleResendInvitation = (invitation: Invitation) => {
   console.log(`Resend invitation to ${invitation.email}`)
 }
 
-const handleRevokeInvitation = (invitation: any) => {
-  const invitationToUpdate = invitations.value.find(i => i.id === invitation.id)
+const handleRevokeInvitation = (invitation: Invitation) => {
+  const invitationToUpdate = invitations.value.find((i: Invitation) => i.id === invitation.id)
   if (invitationToUpdate) {
     invitationToUpdate.status = 'Revoked'
   }
 }
 
-const handleDeleteInvitation = (invitation: any) => {
-  invitations.value = invitations.value.filter(i => i.id !== invitation.id)
+const handleDeleteInvitation = (invitation: Invitation) => {
+  invitations.value = invitations.value.filter((i: Invitation) => i.id !== invitation.id)
 }
 
 </script>

@@ -76,13 +76,13 @@
 import { useJoinRequests, type JoinRequest } from '~/composables/useJoinRequests'
 import { useJoinRequestFilters } from '~/composables/useJoinRequestFilters'
 import { ref, computed, onMounted } from 'vue'
+import { isMobileScreen } from '~/lib/utils'
 
 definePageMeta({
   layout: 'console'
 })
 
-const { isMobile } = useIsMobile()
-
+const isMobile = ref(isMobileScreen())
 const showFilters = ref(false)
 const isRefreshing = ref(false)
 const isDetailsModalOpen = ref(false)
@@ -191,4 +191,11 @@ const toast = useToast()
 onMounted(() => {
   refreshData()
 })
+
+// Add resize event listener
+if (process.client) {
+  window.addEventListener('resize', () => {
+    isMobile.value = isMobileScreen()
+  })
+}
 </script>

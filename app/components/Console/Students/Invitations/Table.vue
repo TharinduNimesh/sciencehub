@@ -54,7 +54,7 @@
 <script setup lang="ts">
 import type { PropType } from 'vue'
 
-interface Invitation {
+export interface Invitation {
   id: number
   name: string
   email: string
