@@ -1,10 +1,6 @@
 <template>
   <div class="min-w-[800px]">
-    <UTable
-      :rows="rows"
-      :columns="columns"
-      :loading="loading"
-    >
+    <UTable :rows="rows" :columns="columns" :loading="loading">
       <template #name-data="{ row }">
         <div class="flex items-center gap-2">
           <UAvatar
@@ -18,21 +14,19 @@
         </div>
       </template>
 
-      <template #payment-data="{ row }">
-        <UBadge
-          :color="row.paymentStatus === 'Paid' ? 'green' : 'red'"
-          size="sm"
-          variant="soft"
-        >
-          {{ row.paymentStatus }}
-        </UBadge>
+      <template #classes-data="{ row }">
+        <div class="flex items-center gap-2">
+          <div class="text-sm text-gray-600">
+            {{ formatClassesDisplay(row.classes) }}
+          </div>
+        </div>
       </template>
 
       <template #status-data="{ row }">
         <UBadge
-          :color="getStatusColor(row.status)"
-          size="sm"
+          :color="row.status === 'Active' ? 'green' : 'red'"
           variant="soft"
+          size="sm"
         >
           {{ row.status }}
         </UBadge>
@@ -59,20 +53,22 @@
 <script setup lang="ts">
 import type { PropType } from 'vue'
 
-interface Student {
+export interface ModeratorClass {
+  id: number
+  name: string
+}
+
+export interface Moderator {
   id: number
   name: string
   email: string
-  grade: number
-  paymentStatus: string
-  status: string
+  classes: ModeratorClass[]
+  status: 'Active' | 'Inactive'
 }
-
-type StatusColor = 'green' | 'red' | 'gray'
 
 const props = defineProps({
   rows: {
-    type: Array as PropType<Student[]>,
+    type: Array as PropType<Moderator[]>,
     required: true,
     default: () => []
   },
@@ -80,59 +76,51 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
-  processingIds: {  // Add new prop for processing state
+  processingIds: {
     type: Array as PropType<number[]>,
     default: () => []
   }
 })
 
 const emit = defineEmits<{
-  view: [student: Student]
-  deactivate: [student: Student]
-  edit: [student: Student]
-  delete: [student: Student]
+  (e: 'view', moderator: Moderator): void
+  (e: 'edit', moderator: Moderator): void
+  (e: 'deactivate', moderator: Moderator): void
 }>()
 
-// Table columns configuration
 const columns = [
   {
     key: 'name',
-    label: 'Student',
+    label: 'Moderator'
   },
   {
-    key: 'grade',
-    label: 'Grade',
-  },
-  {
-    key: 'payment',
-    label: 'Payment Status',
+    key: 'classes',
+    label: 'Classes'
   },
   {
     key: 'status',
-    label: 'Status',
+    label: 'Status'
   },
   {
     key: 'actions',
-    label: '',
+    label: ''
   }
 ]
 
-// Helper functions
-const getStatusColor = (status: string): StatusColor => {
-  const colors: Record<string, StatusColor> = {
-    'Active': 'green',
-    'Inactive': 'gray'
+const formatClassesDisplay = (classes: ModeratorClass[]) => {
+  if (!classes?.length) return 'No classes assigned'
+  if (classes.length === 1 && classes[0]?.name) return classes[0].name
+  if (classes[0]?.name) {
+    return `${classes[0].name} and ${classes.length - 1} more ${classes.length - 1 === 1 ? 'class' : 'classes'}`
   }
-  return colors[status] || 'gray'
+  return 'No classes assigned'
 }
 
-// Add isProcessing helper function
-const isProcessing = (studentId: number) => {
-  return props.processingIds?.includes(studentId)
+const isProcessing = (moderatorId: number) => {
+  return props.processingIds?.includes(moderatorId)
 }
 
-// Update getActionItems function
-const getActionItems = (row: Student) => {
+const getActionItems = (row: Moderator) => {
   const items = [
     [{
       label: 'View Profile',
@@ -147,11 +135,11 @@ const getActionItems = (row: Student) => {
       click: () => emit('edit', row)
     }],
     [{
-      label: 'Delete',
-      icon: 'i-heroicons-trash',
+      label: 'Deactivate',
+      icon: 'i-heroicons-x-mark',
       color: 'red',
       disabled: isProcessing(row.id),
-      click: () => emit('delete', row)
+      click: () => emit('deactivate', row)
     }]
   ]
 

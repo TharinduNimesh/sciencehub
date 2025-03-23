@@ -1,10 +1,6 @@
 <template>
   <div class="min-w-[800px]">
-    <UTable
-      :rows="rows"
-      :columns="columns"
-      :loading="loading"
-    >
+    <UTable :rows="rows" :columns="columns" :loading="loading">
       <template #name-data="{ row }">
         <div class="flex items-center gap-2">
           <UAvatar
@@ -14,6 +10,14 @@
           <div>
             <div class="font-medium text-gray-900">{{ row.name }}</div>
             <div class="text-gray-500 text-sm">{{ row.email }}</div>
+          </div>
+        </div>
+      </template>
+
+      <template #classes-data="{ row }">
+        <div class="flex items-center gap-2">
+          <div class="text-sm text-gray-600">
+            {{ formatClassesDisplay(row.classes) }}
           </div>
         </div>
       </template>
@@ -28,8 +32,8 @@
       <template #status-data="{ row }">
         <UBadge
           :color="getStatusColor(row.status)"
-          size="sm"
           variant="soft"
+          size="sm"
         >
           {{ row.status }}
         </UBadge>
@@ -46,7 +50,6 @@
             icon="i-heroicons-ellipsis-horizontal"
             :ui="{ rounded: 'rounded-full' }"
             :loading="isProcessing(row.id)"
-            :disabled="isProcessing(row.id)"
           />
         </UDropdown>
       </template>
@@ -61,7 +64,10 @@ export interface Invitation {
   id: number
   name: string
   email: string
-  grade: number
+  classes: {
+    id: number
+    name: string
+  }[]
   invitedAt: string
   invitedBy: string
   status: 'Pending' | 'Expired' | 'Revoked' | 'Rejected' | 'Accepted' | 'Used'
@@ -91,31 +97,29 @@ const emit = defineEmits<{
   delete: [invitation: Invitation]
 }>()
 
-// Table columns configuration
 const columns = [
   {
     key: 'name',
-    label: 'Student',
+    label: 'Moderator'
   },
   {
-    key: 'grade',
-    label: 'Grade',
+    key: 'classes',
+    label: 'Classes'
   },
   {
     key: 'invited',
-    label: 'Invited',
+    label: 'Invited'
   },
   {
     key: 'status',
-    label: 'Status',
+    label: 'Status'
   },
   {
     key: 'actions',
-    label: '',
+    label: ''
   }
 ]
 
-// Helper functions
 const formatDate = (date: string) => {
   return new Date(date).toLocaleDateString('en-US', {
     year: 'numeric',
@@ -124,6 +128,24 @@ const formatDate = (date: string) => {
     hour: '2-digit',
     minute: '2-digit'
   })
+}
+
+const formatClassesDisplay = (classes: any[]) => {
+  if (!classes?.length) return 'No classes assigned'
+  
+  // Handle the case where classes are in label/value format
+  const normalizedClasses = classes.map(c => {
+    if (c.value && c.label) {
+      return c.value
+    }
+    return c
+  })
+
+  if (normalizedClasses.length === 1) {
+    return normalizedClasses[0].name
+  }
+
+  return `${normalizedClasses[0].name} and ${normalizedClasses.length - 1} more ${normalizedClasses.length - 1 === 1 ? 'class' : 'classes'}`
 }
 
 const getStatusColor = (status: Invitation['status']): StatusColor => {
@@ -143,7 +165,7 @@ const isProcessing = (invitationId: number) => {
   return props.processingIds?.includes(invitationId)
 }
 
-// Action items for dropdown
+// Update getActionItems function to properly handle loading states
 const getActionItems = (row: Invitation) => {
   const items = []
   const actionGroup = []

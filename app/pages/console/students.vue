@@ -10,19 +10,29 @@
             <p class="text-sm text-gray-500 mt-1">Manage your students</p>
           </div>
 
-          <div class="flex items-center gap-3">
-            <UButton
-              icon="i-heroicons-arrow-path"
-              :ui="{ rounded: 'rounded-full' }"
-              :loading="isReloadingStudents"
-              color="gray"
-              variant="ghost"
-              @click="reloadStudents"
-              square
-            />
-            <UButton icon="i-heroicons-funnel" :ui="{ rounded: 'rounded-full' }" :color="showFilters ? 'primary' : 'gray'"
-              :variant="showFilters ? 'soft' : 'ghost'" :block="isMobile" @click="showFilters = !showFilters"
-              label="Filters" />
+          <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+            <div class="flex gap-2 w-full">
+              <UButton
+                icon="i-heroicons-arrow-path"
+                :ui="{ rounded: 'rounded-full' }"
+                :loading="isReloadingStudents"
+                color="gray"
+                variant="ghost"
+                @click="reloadStudents"
+                square
+              />
+              <div class="flex-1">
+                <UButton 
+                  icon="i-heroicons-funnel" 
+                  :ui="{ rounded: 'rounded-full' }" 
+                  :color="showFilters ? 'primary' : 'gray'"
+                  :variant="showFilters ? 'soft' : 'ghost'" 
+                  :block="true"
+                  @click="showFilters = !showFilters"
+                  label="Filters" 
+                />
+              </div>
+            </div>
           </div>
         </div>
 
@@ -34,7 +44,7 @@
           <div class="border border-gray-200 rounded-xl shadow-sm overflow-hidden">
             <div class="overflow-x-auto">
               <ConsoleStudentsTable :rows="paginatedStudents" :loading="false" @view="navigateToStudent"
-                @deactivate="handleDeactivate" />
+                @deactivate="handleDeactivate" :processing-ids="processingIds" @delete="handleDelete" />
             </div>
           </div>
 
@@ -70,20 +80,37 @@
           </div>
 
           <div class="flex flex-col-reverse sm:flex-row gap-3 w-full sm:w-auto">
-            <UButton
-              icon="i-heroicons-arrow-path"
+            <div class="flex gap-2 w-full">
+              <UButton
+                icon="i-heroicons-arrow-path"
+                :ui="{ rounded: 'rounded-full' }"
+                :loading="isLoading"
+                color="gray"
+                variant="ghost"
+                @click="reloadInvitations"
+                square
+              />
+              <div class="flex-1">
+                <UButton 
+                  icon="i-heroicons-funnel" 
+                  :ui="{ rounded: 'rounded-full' }" 
+                  :color="showInvitationFilters ? 'primary' : 'gray'"
+                  :variant="showInvitationFilters ? 'soft' : 'ghost'" 
+                  :block="true"
+                  @click="showInvitationFilters = !showInvitationFilters"
+                  label="Filters" 
+                />
+              </div>
+                
+            </div>
+            <UButton 
+              label="Invite Student" 
+              color="primary" 
+              icon="i-heroicons-plus" 
               :ui="{ rounded: 'rounded-full' }"
-              :loading="isLoading"
-              color="gray"
-              variant="ghost"
-              @click="reloadInvitations"
-              square
+              :block="isMobile" 
+              @click="isInviteModalOpen = true" 
             />
-            <UButton label="Filters" icon="i-heroicons-funnel" :ui="{ rounded: 'rounded-full' }"
-              :color="showInvitationFilters ? 'primary' : 'gray'" :variant="showInvitationFilters ? 'soft' : 'ghost'"
-              :block="isMobile" @click="showInvitationFilters = !showInvitationFilters" />
-            <UButton label="Invite Student" color="primary" icon="i-heroicons-plus" :ui="{ rounded: 'rounded-full' }"
-              :block="isMobile" @click="isInviteModalOpen = true" />
           </div>
         </div>
 
@@ -95,8 +122,14 @@
         <div class="space-y-2">
           <div class="border border-gray-200 rounded-xl shadow-sm overflow-hidden">
             <div class="overflow-x-auto">
-              <ConsoleStudentsInvitationsTable :rows="paginatedInvitations" :loading="isLoading"
-                @resend="handleResendInvitation" @revoke="handleRevokeInvitation" @delete="handleDeleteInvitation" />
+              <ConsoleStudentsInvitationsTable 
+                :rows="paginatedInvitations" 
+                :loading="isLoading"
+                :processing-ids="processingIds"
+                @resend="handleResendInvitation" 
+                @revoke="handleRevokeInvitation" 
+                @delete="handleDeleteInvitation" 
+              />
             </div>
           </div>
 
@@ -130,13 +163,12 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-// import { useSupabaseClient } from '@nuxtjs/supabase-edge'
 import type { Invitation } from '~/components/Console/Students/Invitations/Table.vue'
 import { useInvitations } from '~/composables/useInvitations'
 import { isMobileScreen } from '~/lib/utils'
 
 // Initialize composables
-const { createInvitation, fetchInvitations, updateInvitationStatus, deleteInvitation, sendInvitationEmail } = useInvitations()
+const { createInvitation, fetchInvitations, updateInvitationStatus, deleteInvitation, resendInvitation } = useInvitations()
 const supabase = useSupabaseClient()
 const toast = useToast()
 
@@ -248,22 +280,30 @@ const handleInvite = async (formData: { name: string; email: string; grade: numb
 
   try {
     isLoading.value = true
-    await createInvitation({
+    const newInvitation = await createInvitation({
       email: formData.email,
       name: formData.name,
       grade: formData.grade,
-      expiresIn: formData.expiresIn
+      expiresIn: formData.expiresIn,
+      role: 'STUDENT'
     })
     
-    // Refresh invitations list
-    const fetchedInvitations = await fetchInvitations()
-    invitations.value = fetchedInvitations.map(invitation => ({
-      ...invitation,
-      invitedBy: 'Current User' // We'll update this once we have user data
-    }))
+    // Transform the new invitation to match the Invitation type
+    const transformedInvitation: Invitation = {
+      id: newInvitation.id,
+      name: newInvitation.name,
+      email: newInvitation.email,
+      grade: newInvitation.grade ?? 0,
+      invitedAt: newInvitation.invitedAt,
+      invitedBy: 'Current User',
+      status: newInvitation.status
+    }
+    
+    // Add the new invitation to the list
+    invitations.value.unshift(transformedInvitation)
     
     toast.add({
-      title: 'Invitation Sent',
+      title: 'Success',
       description: `Invitation sent to ${formData.email}`,
       icon: 'i-heroicons-check-circle',
       color: 'green'
@@ -278,6 +318,7 @@ const handleInvite = async (formData: { name: string; email: string; grade: numb
     })
   } finally {
     isLoading.value = false
+    isInviteModalOpen.value = false
   }
 }
 
@@ -298,7 +339,7 @@ const updateInvitationFilters = (newFilters: any) => {
   Object.assign(invitationFilters.value, newFilters)
 }
 
-// Replace the invitations ref with useInvitations composable
+// Replace the invitations ref with proper typing
 const invitations = ref<Invitation[]>([])
 
 // Add loading state
@@ -311,8 +352,17 @@ const isReloadingStudents = ref(false)
 onMounted(async () => {
   try {
     isLoading.value = true
-    const fetchedInvitations = await fetchInvitations()
-    invitations.value = fetchedInvitations
+    const rawInvitations = await fetchInvitations('STUDENT')
+    // Transform the raw invitations to match the required Invitation type
+    invitations.value = rawInvitations.map(invitation => ({
+      id: invitation.id,
+      name: invitation.name,
+      email: invitation.email,
+      grade: invitation.grade ?? 0,
+      invitedAt: invitation.invitedAt,
+      invitedBy: 'Current User',
+      status: invitation.status
+    }))
   } catch (error) {
     console.error('Failed to fetch invitations:', error)
   } finally {
@@ -363,62 +413,55 @@ const paginatedInvitations = computed(() => {
 
 // Invitation handlers
 const handleResendInvitation = async (invitation: Invitation) => {
-  try {
-    isLoading.value = true
-    const { data: invitationDB } = await supabase
-      .from('invitations')
-      .select('*')
-      .eq('id', invitation.id)
-      .single()
-    
-    if (!invitationDB) {
-      throw new Error('Invitation not found')
+  await handleAction(invitation.id, async () => {
+    try {
+      await resendInvitation(invitation.id)
+      
+      toast.add({
+        title: 'Success',
+        description: `Invitation resent to ${invitation.email}`,
+        icon: 'i-heroicons-check-circle',
+        color: 'green'
+      })
+    } catch (error) {
+      console.error('Failed to resend invitation:', error)
+      toast.add({
+        title: 'Error',
+        description: 'Failed to resend invitation. Please try again.',
+        icon: 'i-heroicons-x-circle',
+        color: 'red'
+      })
+      throw error // Re-throw to ensure the processing state is cleared
     }
-
-    await sendInvitationEmail(invitationDB)
-    
-    toast.add({
-      title: 'Success',
-      description: `Invitation resent to ${invitation.email}`,
-      icon: 'i-heroicons-check-circle',
-      color: 'green'
-    })
-  } catch (error) {
-    console.error('Failed to resend invitation:', error)
-    toast.add({
-      title: 'Error',
-      description: 'Failed to resend invitation. Please try again.',
-      icon: 'i-heroicons-x-circle',
-      color: 'red'
-    })
-  } finally {
-    isLoading.value = false
-  }
+  })
 }
 
 const handleRevokeInvitation = async (invitation: Invitation) => {
-  try {
-    await updateInvitationStatus(invitation.id)
-    const invitationToUpdate = invitations.value.find(i => i.id === invitation.id)
-    if (invitationToUpdate) {
-      invitationToUpdate.status = 'Revoked'
+  await handleAction(invitation.id, async () => {
+    try {
+      await updateInvitationStatus(invitation.id)
+      const invitationToUpdate = invitations.value.find(i => i.id === invitation.id)
+      if (invitationToUpdate) {
+        invitationToUpdate.status = 'Revoked'
+      }
+      
+      toast.add({
+        title: 'Invitation Revoked',
+        description: `Invitation for ${invitation.email} has been revoked`,
+        icon: 'i-heroicons-check-circle',
+        color: 'green'
+      })
+    } catch (error) {
+      console.error('Failed to revoke invitation:', error)
+      toast.add({
+        title: 'Error',
+        description: 'Failed to revoke invitation. Please try again.',
+        icon: 'i-heroicons-x-circle',
+        color: 'red'
+      })
+      throw error // Re-throw to ensure the processing state is cleared
     }
-    
-    toast.add({
-      title: 'Invitation Revoked',
-      description: `Invitation for ${invitation.email} has been revoked`,
-      icon: 'i-heroicons-check-circle',
-      color: 'green'
-    })
-  } catch (error) {
-    console.error('Failed to revoke invitation:', error)
-    toast.add({
-      title: 'Error',
-      description: 'Failed to revoke invitation. Please try again.',
-      icon: 'i-heroicons-x-circle',
-      color: 'red'
-    })
-  }
+  })
 }
 
 const handleDeleteInvitation = async (invitation: Invitation) => {
@@ -462,12 +505,20 @@ const reloadStudents = async () => {
   }
 }
 
-// Reload invitations function
+// Update reloadInvitations to transform data properly
 const reloadInvitations = async () => {
   try {
     isLoading.value = true
-    const fetchedInvitations = await fetchInvitations()
-    invitations.value = fetchedInvitations
+    const rawInvitations = await fetchInvitations('STUDENT')
+    invitations.value = rawInvitations.map(invitation => ({
+      id: invitation.id,
+      name: invitation.name,
+      email: invitation.email,
+      grade: invitation.grade ?? 0,
+      invitedAt: invitation.invitedAt,
+      invitedBy: 'Current User',
+      status: invitation.status
+    }))
   } catch (error) {
     console.error('Failed to reload invitations:', error)
     toast.add({
@@ -481,4 +532,64 @@ const reloadInvitations = async () => {
   }
 }
 
+// Processing state management
+const processingIds = ref<number[]>([])
+
+const handleAction = async (id: number, action: () => Promise<void>) => {
+  processingIds.value.push(id)
+  try {
+    await action()
+  } finally {
+    processingIds.value = processingIds.value.filter(pid => pid !== id)
+  }
+}
+
+// Add deleteStudent function with proper type
+const deleteStudent = async (studentId: number) => {
+  try {
+    // TODO: Implement actual student deletion logic with Supabase
+    // For now, just remove from local state
+    students.value = students.value.filter(s => s.id !== studentId)
+    
+    toast.add({
+      title: 'Success',
+      description: 'Student has been deleted successfully',
+      icon: 'i-heroicons-check-circle',
+      color: 'green'
+    })
+  } catch (error) {
+    console.error('Failed to delete student:', error)
+    toast.add({
+      title: 'Error',
+      description: 'Failed to delete student. Please try again.',
+      icon: 'i-heroicons-x-circle',
+      color: 'red'
+    })
+  }
+}
+
+// Update handleDelete with proper typing
+const handleDelete = async (student: { id: number }) => {
+  await handleAction(student.id, async () => {
+    await deleteStudent(student.id)
+  })
+}
+
+// Update onMounted to handle grade properly
+onMounted(async () => {
+  try {
+    isLoading.value = true
+    const fetchedInvitations = await fetchInvitations('STUDENT')
+    // Ensure grade is always defined for the table
+    invitations.value = fetchedInvitations.map(invitation => ({
+      ...invitation,
+      grade: invitation.grade || 0, // Provide a default value if grade is undefined
+      invitedBy: 'Current User' // We'll update this once we have user data
+    }))
+  } catch (error) {
+    console.error('Failed to fetch invitations:', error)
+  } finally {
+    isLoading.value = false
+  }
+})
 </script>

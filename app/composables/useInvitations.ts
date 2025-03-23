@@ -26,7 +26,8 @@ export interface Invitation {
   id: number
   name: string
   email: string
-  grade: number
+  grade?: number
+  classes?: Array<{ id: number; name: string }>
   invitedAt: string
   expiredAt: string
   invitedBy: string
@@ -51,7 +52,7 @@ export const useInvitations = () => {
   const supabase = useSupabaseClient<Database>()
   const config = useRuntimeConfig()
 
-  const calculateExpirationDate = (days: number) => {
+  const calculateExpirationDate = (days: number): string => {
     const expiresAt = new Date()
     expiresAt.setDate(expiresAt.getDate() + days)
     return expiresAt.toISOString()
@@ -113,6 +114,7 @@ export const useInvitations = () => {
     email: string
     name: string
     grade?: number
+    classes?: Array<{ id: number; name: string }>
     expiresIn?: number
     role?: 'STUDENT' | 'MODERATOR'
   }) => {
@@ -120,7 +122,14 @@ export const useInvitations = () => {
     await validateInvitation(data.email)
 
     const expiresAt = calculateExpirationDate(data.expiresIn || 7)
-    const metadata = data.grade ? { grade: data.grade } : {}
+    const metadata: Record<string, any> = {}
+    
+    // Set role-specific metadata
+    if (data.role === 'STUDENT' && data.grade) {
+      metadata.grade = data.grade
+    } else if (data.role === 'MODERATOR' && data.classes) {
+      metadata.classes = data.classes
+    }
 
     // Create the invitation
     const { error: invitationError, data: newInvitation } = await supabase
@@ -150,8 +159,8 @@ export const useInvitations = () => {
     return newInvitation
   }
 
-  const fetchInvitations = async (): Promise<Invitation[]> => {
-    const { data: invitations, error } = await supabase
+  const fetchInvitations = async (role?: 'STUDENT' | 'MODERATOR'): Promise<Invitation[]> => {
+    let query = supabase
       .from('invitations')
       .select(`
         *,
@@ -164,8 +173,14 @@ export const useInvitations = () => {
           used_at
         )
       `)
-      .eq('role', 'STUDENT')
       .order('created_at', { ascending: false })
+
+    // Add role filter if specified
+    if (role) {
+      query = query.eq('role', role)
+    }
+
+    const { data: invitations, error } = await query
 
     if (error) {
       throw error
@@ -175,7 +190,8 @@ export const useInvitations = () => {
       id: invitation.id,
       name: invitation.name,
       email: invitation.email,
-      grade: invitation.metadata?.grade || 0,
+      ...(invitation.metadata?.grade ? { grade: invitation.metadata.grade } : {}),
+      ...(invitation.metadata?.classes ? { classes: invitation.metadata.classes } : {}),
       invitedAt: invitation.invited_at,
       expiredAt: invitation.expired_at,
       invitedBy: invitation.profiles?.name || 'Unknown',
@@ -275,13 +291,70 @@ export const useInvitations = () => {
     }
   }
 
+  const resendInvitation = async (invitationId: number) => {
+    // Fetch the current invitation
+    const { data: invitation, error: fetchError } = await supabase
+      .from('invitations')
+      .select('*')
+      .eq('id', invitationId)
+      .single()
+
+    if (fetchError) {
+      throw fetchError
+    }
+
+    if (!invitation) {
+      throw new Error('Invitation not found')
+    }
+
+    // Calculate new expiration date
+    const expiresAt = calculateExpirationDate(7) // Reset to 7 days from now
+
+    // Update invitation status
+    const { data: updatedInvitation, error: updateError } = await supabase
+      .from('invitations')
+      .update({
+        expired_at: expiresAt,
+        is_revoked: false, // Reset revoked status if it was revoked
+        is_mail_sent: false, // Reset mail sent status so we can track the new email
+        invited_at: new Date().toISOString() // Update invited_at to current time
+      })
+      .eq('id', invitationId)
+      .select()
+      .single()
+
+    if (updateError) {
+      throw updateError
+    }
+
+    // Send the invitation email
+    try {
+      await sendInvitationEmail(updatedInvitation)
+
+      // Update mail sent status
+      const { error: mailSentError } = await supabase
+        .from('invitations')
+        .update({ is_mail_sent: true })
+        .eq('id', invitationId)
+
+      if (mailSentError) {
+        console.error('Failed to update mail sent status:', mailSentError)
+      }
+    } catch (error) {
+      console.error('Failed to send invitation email:', error)
+      throw error
+    }
+
+    return updatedInvitation
+  }
+
   return {
     createInvitation,
     fetchInvitations,
     updateInvitationStatus,
     checkExpiredInvitations,
     deleteInvitation,
-    sendInvitationEmail, // Export for manual resend capability
-    validateInvitation // Export for potential reuse
+    resendInvitation, // Add the new function to the exports
+    validateInvitation
   }
 }
