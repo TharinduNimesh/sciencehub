@@ -6,8 +6,20 @@
       <div class="absolute bottom-[20%] right-[5%] w-[400px] h-[400px] bg-violet-200/30 rounded-full blur-3xl animate-blob animation-delay-2000"></div>
     </div>
 
+    <!-- Loading State -->
+    <div v-if="isValidating" class="w-full max-w-2xl z-10">
+      <div class="mx-4">
+        <div class="bg-white/80 backdrop-blur-xl p-8 rounded-2xl shadow-xl">
+          <div class="flex flex-col items-center justify-center space-y-4">
+            <UIcon name="i-heroicons-arrow-path" class="w-8 h-8 animate-spin text-violet-600" />
+            <p class="text-gray-600 font-medium">Validating your account...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Setup Container -->
-    <Motion :initial="{ opacity: 0, y: 20, scale: 0.95 }" :whileInView="{ opacity: 1, y: 0, scale: 1 }"
+    <Motion v-else :initial="{ opacity: 0, y: 20, scale: 0.95 }" :whileInView="{ opacity: 1, y: 0, scale: 1 }"
       :transition="{ type: 'spring', stiffness: 50, damping: 15 }" class="w-full max-w-2xl z-10">
       <!-- Branding Outside Card -->
       <div class="text-center mb-6 mx-4">
@@ -73,9 +85,74 @@ import AddressForm from '@/components/Console/Students/AccountSetup/AddressForm.
 const supabase = useSupabaseClient<Database>()
 const router = useRouter()
 const toast = useToast()
+const { data: { user } } = await supabase.auth.getUser()
 
+const isValidating = ref(true)
 const currentStep = ref(1)
 const isLoading = ref(false)
+
+// Validate user and role
+onMounted(async () => {
+  isValidating.value = true
+  try {
+    if (!user) {
+      await router.push('/auth/sign-in')
+      return
+    }
+
+    // Get user profile to check role
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    if (profileError) throw profileError
+
+    // Check if user is a student
+    if (profileData.role?.toUpperCase() !== 'STUDENT') {
+      toast.add({
+        title: 'Access Denied',
+        description: 'This page is only for student account setup',
+        color: 'red'
+      })
+      await router.push('/console/dashboard')
+      return
+    }
+
+    // Check if student account is already set up
+    const { data: studentData, error: studentError } = await supabase
+      .from('students')
+      .select('id')
+      .eq('user_id', user.id)
+      .single()
+
+    if (studentData) {
+      toast.add({
+        title: 'Account Setup Complete',
+        description: 'Your student profile is already set up',
+        color: 'blue'
+      })
+      await router.push('/console/dashboard')
+      return
+    }
+
+    // If there's no student record (PGRST116 error) or other setup-related error, allow setup to continue
+    if (studentError && studentError.code !== 'PGRST116') {
+      throw studentError
+    }
+  } catch (error: any) {
+    console.error('Validation error:', error)
+    toast.add({
+      title: 'Error',
+      description: error.message || 'An error occurred during validation',
+      color: 'red'
+    })
+    await router.push('/auth/sign-in')
+  } finally {
+    isValidating.value = false
+  }
+})
 
 const steps = [
   { number: 1, title: 'Basic Information' },

@@ -162,6 +162,7 @@
 </template>
 
 <script setup lang="ts">
+import { definePageMeta } from '#imports'
 import { ref, computed, onMounted } from 'vue'
 import type { Invitation } from '~/components/Console/Students/Invitations/Table.vue'
 import { useInvitations } from '~/composables/useInvitations'

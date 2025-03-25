@@ -39,6 +39,7 @@
         <UDropdown
           :items="getActionItems(row)"
           :disabled="isProcessing(row.id)"
+          :popper="{ arrow: true, placement: 'bottom-start' }"
         >
           <UButton
             color="gray"
@@ -160,7 +161,7 @@ const getActionItems = (row: Invitation) => {
   }
 
   // Only Pending invitations can be revoked
-  if (row.status === 'Pending') {
+  if (row.status === 'Pending' && isAdmin()) {
     actionGroup.push({
       label: 'Revoke Invitation',
       icon: 'i-heroicons-x-mark',
@@ -170,8 +171,8 @@ const getActionItems = (row: Invitation) => {
     })
   }
 
-  // All invitations except Used ones can be deleted
-  if (row.status !== 'Used') {
+  // Allow deletion for non-active invitations (Used, Revoked, Expired, Rejected)
+  if (isAdmin() && row.status !== 'Pending') {
     actionGroup.push({
       label: 'Delete',
       icon: 'i-heroicons-trash',

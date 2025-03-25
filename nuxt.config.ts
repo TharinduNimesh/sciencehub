@@ -66,5 +66,16 @@ export default defineNuxtConfig({
       fromName: process.env.SMTP_FROM_NAME,
       fromEmail: process.env.SMTP_FROM_EMAIL,
     }
+  },
+
+  routeRules: {
+    "/console": {
+      ssr: false,
+      appMiddleware: ['auth'],
+    },
+    "/console/*/**": {
+      ssr: false,
+      appMiddleware: ['auth'],
+    }
   }
 })
