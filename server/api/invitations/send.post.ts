@@ -14,8 +14,8 @@ export default defineEventHandler(async (event: H3Event) => {
       day: 'numeric'
     })
 
-    // Generate invitation URL with token
-    const invitationUrl = `${baseUrl}/auth/accept-invitation?token=${invitation.token}`
+    // Generate invitation URL with token and email
+    const invitationUrl = `${baseUrl}/auth/invitation?token=${invitation.token}&email=${encodeURIComponent(invitation.email)}`
     
     // Get logo URL
     const logoUrl = `${baseUrl}/images/logo.svg`

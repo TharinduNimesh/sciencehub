@@ -128,7 +128,28 @@ const handleLogin = async (event) => {
 
             // Set user in store with uppercase role
             authStore.setUser(data.user, userProfile)
-            console.log('User profile:', userProfile)
+            
+            // Check if user is a student and needs to complete account setup
+            if (userProfile?.role === 'STUDENT') {
+                const { data: studentData, error: studentError } = await supabase
+                    .from('students')
+                    .select('id')
+                    .eq('user_id', data.user.id)
+                    .single()
+
+                if (studentError && studentError.code === 'PGRST116') {
+                    // No student record found, redirect to account setup
+                    toast.add({
+                        title: 'Welcome',
+                        description: 'Please complete your student profile setup',
+                        color: 'blue'
+                    })
+                    await router.push('/console/students/account-setup')
+                    return
+                } else if (studentError) {
+                    throw studentError
+                }
+            }
             
             toast.add({
                 title: 'Success',
