@@ -51,7 +51,6 @@
               <ConsoleModeratorsTable 
                 :rows="paginatedModerators" 
                 :loading="false" 
-                @view="navigateToModerator"
                 @deactivate="handleDeactivate" 
                 :processing-ids="processingIds" 
               />
@@ -170,27 +169,37 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import type { Invitation } from '~/components/Console/Moderators/Invitations/Table.vue'
+import type { Database, Invitation } from '~/types/supabase'
 import type { Moderator } from '~/components/Console/Moderators/Table.vue'
 import { useInvitations } from '~/composables/useInvitations'
 import { isMobileScreen } from '~/lib/utils'
+import { useNotification } from '~/composables/useNotification'
+import { useRouter } from '#app'
 
-definePageMeta({
-  layout: 'console'
-})
+// Page meta
+definePageMeta({ layout: 'console' })
 
+// Composables
+const { createInvitation, fetchInvitations, updateInvitationStatus, deleteInvitation, resendInvitation } = useInvitations()
+const notification = useNotification()
+const router = useRouter()
+
+// Navigation
+const navigateToModerator = (moderator: Moderator) => {
+  router.push(`/console/moderators/${moderator.id}`)
+}
+
+// Reactive state
 const isMobile = ref(isMobileScreen())
 const showFilters = ref(false)
+const showInvitationFilters = ref(false)
 const isInviteModalOpen = ref(false)
+const isLoading = ref(false)
+const isReloadingModerators = ref(false)
+const processingIds = ref<number[]>([])
 const page = ref(1)
+const invitationPage = ref(1)
 const pageSize = 8
-
-// Add resize event listener
-if (import.meta.client) {
-  window.addEventListener('resize', () => {
-    isMobile.value = isMobileScreen()
-  })
-}
 
 // Filter states
 const filters = ref({
@@ -199,79 +208,73 @@ const filters = ref({
   status: undefined
 })
 
-// Update filters
-const updateFilters = (newFilters: any) => {
-  Object.assign(filters.value, newFilters)
+const invitationFilters = ref({
+  search: '',
+  class: undefined,
+  status: undefined,
+  dateRange: undefined
+})
+
+// Mobile responsive handler
+if (import.meta.client) {
+  window.addEventListener('resize', () => isMobile.value = isMobileScreen())
 }
 
-// Dummy data for moderators with correct status type
-const moderators = ref<Moderator[]>([
-  {
-    id: 1,
-    name: 'John Smith',
-    email: 'john.smith@example.com',
-    classes: [
-      { id: 1, name: 'Grade 11 - Revision' },
-      { id: 2, name: 'Grade 11 - Theory' },
-      { id: 3, name: 'Grade 10 - Revision' }
-    ],
-    status: 'Active'
-  },
-  {
-    id: 2,
-    name: 'Jane Wilson',
-    email: 'jane.wilson@example.com',
-    classes: [
-      { id: 2, name: 'Grade 11 - Theory' }
-    ],
-    status: 'Active'
-  },
-  {
-    id: 3,
-    name: 'Michael Brown',
-    email: 'michael.b@example.com',
-    classes: [
-      { id: 3, name: 'Grade 10 - Revision' },
-      { id: 4, name: 'Grade 10 - Theory' }
-    ],
-    status: 'Inactive'
-  }
-] as const)
+// Moderators state
+const moderators = ref<Moderator[]>([])
 
-// Apply filters to moderators
+// Invitations state
+const invitations = ref<Invitation[]>([])
+
+// Computed properties
 const filteredModerators = computed(() => {
-  return moderators.value.filter((moderator: any) => {
-    if (filters.value.search && 
-      !moderator.name.toLowerCase().includes(filters.value.search.toLowerCase()) &&
-      !moderator.email.toLowerCase().includes(filters.value.search.toLowerCase())) {
-      return false
-    }
-    if (filters.value.class && !moderator.classes.some((c: any) => c.name === filters.value.class)) {
-      return false
-    }
-    if (filters.value.status && moderator.status !== filters.value.status) {
-      return false
+  return moderators.value.filter(moderator => {
+    const matchesSearch = !filters.value.search || 
+      moderator.name.toLowerCase().includes(filters.value.search.toLowerCase()) ||
+      moderator.email.toLowerCase().includes(filters.value.search.toLowerCase())
+    const matchesClass = !filters.value.class || 
+      moderator.classes.some(c => c.name === filters.value.class)
+    const matchesStatus = !filters.value.status || 
+      moderator.status === filters.value.status
+    return matchesSearch && matchesClass && matchesStatus
+  })
+})
+
+const paginatedModerators = computed(() => 
+  filteredModerators.value.slice((page.value - 1) * pageSize, page.value * pageSize)
+)
+
+const filteredInvitations = computed(() => {
+  return invitations.value.filter(invitation => {
+    const matchesSearch = !invitationFilters.value.search || 
+      invitation.name.toLowerCase().includes(invitationFilters.value.search.toLowerCase()) ||
+      invitation.email.toLowerCase().includes(invitationFilters.value.search.toLowerCase())
+    const matchesClass = !invitationFilters.value.class || 
+      invitation.classes?.some(c => c.name === invitationFilters.value.class)
+    const matchesStatus = !invitationFilters.value.status || 
+      invitation.status === invitationFilters.value.status
+    
+    if (!matchesSearch || !matchesClass || !matchesStatus) return false
+    
+    if (invitationFilters.value.dateRange) {
+      const invitedDate = new Date(invitation.invitedAt).getTime()
+      const now = new Date().getTime()
+      const timeRanges = {
+        '24h': 24 * 60 * 60 * 1000,
+        '7d': 7 * 24 * 60 * 60 * 1000,
+        '30d': 30 * 24 * 60 * 60 * 1000
+      }
+      return now - invitedDate <= timeRanges[invitationFilters.value.dateRange]
     }
     return true
   })
 })
 
-// Get paginated moderators
-const paginatedModerators = computed(() => {
-  return filteredModerators.value.slice(
-    (page.value - 1) * pageSize,
-    page.value * pageSize
-  )
-})
+const paginatedInvitations = computed(() => 
+  filteredInvitations.value.slice((invitationPage.value - 1) * pageSize, invitationPage.value * pageSize)
+)
 
-// Navigation and action handlers
-const navigateToModerator = (moderator: any) => {
-  console.log(`Navigate to moderator ${moderator.id}`)
-}
-
-// Add processing state management
-const processingIds = ref<number[]>([])
-
+// Action handlers
 const handleAction = async (id: number, action: () => Promise<void>) => {
   processingIds.value.push(id)
   try {
@@ -281,300 +284,102 @@ const handleAction = async (id: number, action: () => Promise<void>) => {
   }
 }
 
-// Update the action handlers to use processing state
-const handleDeactivate = async (moderator: Moderator) => {
-  await handleAction(moderator.id, async () => {
-    // Your deactivate logic here
-    await deactivateModerator(moderator.id)
-  })
-}
-
-// Invitation section
-const showInvitationFilters = ref(false)
-const invitationPage = ref(1)
-const isLoading = ref(false)
-const isReloadingModerators = ref(false)
-
-// Invitation filters state
-const invitationFilters = ref({
-  search: '',
-  class: undefined,
-  status: undefined,
-  dateRange: undefined
-})
-
-// Update invitation filters
-const updateInvitationFilters = (newFilters: any) => {
-  Object.assign(invitationFilters.value, newFilters)
-}
-
-// Dummy invitations data
-const invitations = ref<Invitation[]>([]);
-
-// Apply filters to invitations
-const filteredInvitations = computed(() => {
-  return invitations.value.filter((invitation: Invitation) => {
-    if (invitationFilters.value.search &&
-      !invitation.name.toLowerCase().includes(invitationFilters.value.search.toLowerCase()) &&
-      !invitation.email.toLowerCase().includes(invitationFilters.value.search.toLowerCase())) {
-      return false
-    }
-    if (invitationFilters.value.class && !invitation.classes.some(c => c.name === invitationFilters.value.class)) {
-      return false
-    }
-    if (invitationFilters.value.status && invitation.status !== invitationFilters.value.status) {
-      return false
-    }
-    if (invitationFilters.value.dateRange) {
-      const invitedDate = new Date(invitation.invitedAt)
-      const now = new Date()
-      switch (invitationFilters.value.dateRange) {
-        case '24h':
-          if (now.getTime() - invitedDate.getTime() > 24 * 60 * 60 * 1000) return false
-          break
-        case '7d':
-          if (now.getTime() - invitedDate.getTime() > 7 * 24 * 60 * 60 * 1000) return false
-          break
-        case '30d':
-          if (now.getTime() - invitedDate.getTime() > 30 * 24 * 60 * 60 * 1000) return false
-          break
-      }
-    }
-    return true
-  })
-})
-
-// Get paginated invitations
-const paginatedInvitations = computed(() => {
-  return filteredInvitations.value.slice(
-    (invitationPage.value - 1) * pageSize,
-    invitationPage.value * pageSize
-  )
-})
-
-// Initialize composables
-const { createInvitation, fetchInvitations, updateInvitationStatus, deleteInvitation, resendInvitation } = useInvitations()
-const toast = useToast()
-
-definePageMeta({
-  layout: 'console'
-})
-
-// Update handleInvite to transform the data before assigning
 const handleInvite = async (formData: { name: string; email: string; classes?: Array<{ id: number; name: string }>; expiresIn: number }) => {
   try {
     isLoading.value = true
     const newInvitation = await createInvitation({
-      email: formData.email,
-      name: formData.name,
-      classes: formData.classes,
-      expiresIn: formData.expiresIn,
-      role: 'MODERATOR'
+      ...formData,
+      role: 'MODERATOR',
+      classes: formData.classes || []
     })
+
+    // Reload invitations to get fresh data
+    await loadInvitations()
     
-    // Transform the new invitation to match the Invitation type
-    const transformedInvitation = {
-      id: newInvitation.id,
-      name: newInvitation.name,
-      email: newInvitation.email,
-      classes: newInvitation.classes || [],
-      invitedAt: newInvitation.invitedAt,
-      invitedBy: 'Current User',
-      status: newInvitation.status
-    }
-    
-    // Add the new invitation to the list
-    invitations.value.unshift(transformedInvitation)
-    
-    toast.add({
-      title: 'Invitation Sent',
-      description: `Invitation sent to ${formData.email}`,
-      icon: 'i-heroicons-check-circle',
-      color: 'green'
-    })
-  } catch (error: any) {
+    notification.showSuccess(`Invitation sent to ${formData.email}`)
+    isInviteModalOpen.value = false
+  } catch (error) {
     console.error('Failed to send invitation:', error)
-    toast.add({
-      title: 'Error',
-      description: error.message || 'Failed to send invitation. Please try again.',
-      icon: 'i-heroicons-x-circle',
-      color: 'red'
-    })
+    notification.showError('Failed to send invitation. Please try again.')
   } finally {
     isLoading.value = false
-    isInviteModalOpen.value = false
   }
 }
 
-// Update handleRevokeInvitation to properly handle types
-const handleRevokeInvitation = async (invitation: Invitation) => {
-  await handleAction(invitation.id, async () => {
-    try {
-      await updateInvitationStatus(invitation.id)
-      const index = invitations.value.findIndex(i => i.id === invitation.id)
-      if (index !== -1) {
-        const currentInvitation = invitations.value[index]
-        if (currentInvitation) {
-          // Create updatedInvitation with all required properties
-          const updatedInvitation: Invitation = {
-            id: currentInvitation.id,
-            name: currentInvitation.name,
-            email: currentInvitation.email,
-            classes: currentInvitation.classes,
-            invitedAt: currentInvitation.invitedAt,
-            invitedBy: currentInvitation.invitedBy,
-            status: 'Revoked'
-          }
-          invitations.value[index] = updatedInvitation
-        }
-      }
-      useToast().add({
-        title: 'Success',
-        description: 'Invitation revoked successfully',
-        color: 'green'
-      })
-    } catch (error) {
-      useToast().add({
-        title: 'Error',
-        description: 'Failed to revoke invitation',
-        color: 'red'
-      })
-    }
-  })
+// Data loading functions
+const loadInvitations = async () => {
+  try {
+    isLoading.value = true
+    const fetchedInvitations = await fetchInvitations('MODERATOR')
+    invitations.value = fetchedInvitations;
+  } catch (error) {
+    console.error('Failed to fetch invitations:', error)
+    notification.showError('Failed to fetch invitations. Please try again.')
+  } finally {
+    isLoading.value = false
+  }
 }
 
-// Invitation handlers
-const handleResendInvitation = async (invitation: Invitation) => {
-  await handleAction(invitation.id, async () => {
-    try {
-      await resendInvitation(invitation.id)
-      
-      useToast().add({
-        title: 'Success',
-        description: `Invitation resent to ${invitation.email}`,
-        color: 'green'
-      })
-    } catch (error) {
-      console.error('Failed to resend invitation:', error)
-      useToast().add({
-        title: 'Error',
-        description: 'Failed to resend invitation. Please try again.',
-        color: 'red'
-      })
-      throw error // Re-throw to ensure the processing state is cleared
-    }
-  })
-}
+const reloadInvitations = () => loadInvitations()
 
-const handleDeleteInvitation = async (invitation: Invitation) => {
-  await handleAction(invitation.id, async () => {
-    try {
-      await deleteInvitation(invitation.id)
-      invitations.value = invitations.value.filter(i => i.id !== invitation.id)
-      useToast().add({
-        title: 'Success',
-        description: 'Invitation deleted successfully',
-        color: 'green'
-      })
-    } catch (error) {
-      useToast().add({
-        title: 'Error',
-        description: 'Failed to delete invitation',
-        color: 'red'
-      })
-    }
-  })
-}
-
-// Reload functions
 const reloadModerators = async () => {
   try {
     isReloadingModerators.value = true
-    // TODO: Implement moderators reload
+    // Implement actual moderator reload logic here
     await new Promise(resolve => setTimeout(resolve, 1000))
   } catch (error) {
     console.error('Failed to reload moderators:', error)
-    useToast().add({
-      title: 'Error',
-      description: 'Failed to reload moderators. Please try again.',
-      icon: 'i-heroicons-x-circle',
-      color: 'red'
-    })
+    notification.showError('Failed to reload moderators. Please try again.')
   } finally {
     isReloadingModerators.value = false
   }
 }
 
-// Update onMounted to properly transform the invitations data
-onMounted(async () => {
-  try {
-    isLoading.value = true
-    const rawInvitations = await fetchInvitations('MODERATOR')
-    // Transform the raw invitations to match the required Invitation type
-    invitations.value = rawInvitations.map(invitation => ({
-      ...invitation,
-      classes: invitation.classes || [], // Provide empty array if classes is undefined
-      invitedBy: invitation.invitedBy || 'System' // Provide default value if undefined
-    }))
-  } catch (error) {
-    console.error('Failed to fetch invitations:', error)
-    toast.add({
-      title: 'Error',
-      description: 'Failed to fetch invitations. Please try again.',
-      icon: 'i-heroicons-x-circle',
-      color: 'red'
-    })
-  } finally {
-    isLoading.value = false
-  }
-})
-
-// Update reloadInvitations to use the same transformation
-const reloadInvitations = async () => {
-  try {
-    isLoading.value = true
-    const rawInvitations = await fetchInvitations('MODERATOR')
-    invitations.value = rawInvitations.map(invitation => ({
-      ...invitation,
-      classes: invitation.classes || [],
-      invitedBy: invitation.invitedBy || 'System'
-    }))
-  } catch (error) {
-    console.error('Failed to reload invitations:', error)
-    toast.add({
-      title: 'Error',
-      description: 'Failed to reload invitations. Please try again.',
-      icon: 'i-heroicons-x-circle',
-      color: 'red'
-    })
-  } finally {
-    isLoading.value = false
-  }
+// Invitation handlers
+const handleResendInvitation = async (invitation: Invitation) => {
+  await handleAction(invitation.id, async () => {
+    await resendInvitation(invitation.id)
+    notification.showSuccess(`Invitation resent to ${invitation.email}`)
+  })
 }
 
-// Fix type definitions
-const deactivateModerator = async (moderatorId: number) => {
-  try {
-    // TODO: Implement actual moderator deactivation logic
-    const moderatorToUpdate = moderators.value.find(m => m.id === moderatorId)
-    if (moderatorToUpdate) {
-      moderatorToUpdate.status = moderatorToUpdate.status === 'Active' ? 'Inactive' : 'Active'
-      
-      toast.add({
-        title: 'Success',
-        description: `Moderator status updated successfully`,
-        icon: 'i-heroicons-check-circle',
-        color: 'green'
-      })
+const handleRevokeInvitation = async (invitation: Invitation) => {
+  await handleAction(invitation.id, async () => {
+    await updateInvitationStatus(invitation.id)
+    const invitationToUpdate = invitations.value.find(i => i.id === invitation.id)
+    if (invitationToUpdate) {
+      invitationToUpdate.status = 'Revoked'
     }
-  } catch (error) {
-    console.error('Failed to deactivate moderator:', error)
-    toast.add({
-      title: 'Error',
-      description: 'Failed to update moderator status. Please try again.',
-      icon: 'i-heroicons-x-circle',
-      color: 'red'
-    })
-  }
+    notification.showSuccess(`Invitation for ${invitation.email} has been revoked`)
+  })
 }
+
+const handleDeleteInvitation = async (invitation: Invitation) => {
+  await handleAction(invitation.id, async () => {
+    await deleteInvitation(invitation.id)
+    invitations.value = invitations.value.filter(i => i.id !== invitation.id)
+    notification.showSuccess(`Invitation for ${invitation.email} has been deleted`)
+  })
+}
+
+// Moderator handlers
+const handleDeactivate = async (moderator: Moderator) => {
+  await handleAction(moderator.id, async () => {
+    const status = moderator.status === 'Active' ? 'Inactive' : 'Active'
+    moderator.status = status
+    notification.showSuccess(`Moderator status updated to ${status}`)
+  })
+}
+
+// Filter handlers
+const updateFilters = (newFilters: any) => {
+  Object.assign(filters.value, newFilters)
+}
+
+const updateInvitationFilters = (newFilters: any) => {
+  Object.assign(invitationFilters.value, newFilters)
+}
+
+// Initialize data
+onMounted(loadInvitations)
 </script>

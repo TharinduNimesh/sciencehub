@@ -57,16 +57,8 @@
 
 <script setup lang="ts">
 import type { PropType } from 'vue'
-
-export interface Invitation {
-  id: number
-  name: string
-  email: string
-  grade: number
-  invitedAt: string
-  invitedBy: string
-  status: 'Pending' | 'Expired' | 'Revoked' | 'Rejected' | 'Accepted' | 'Used'
-}
+import type { Invitation } from '~/types/supabase'
+import isAdmin from '~/utils/is-admin'
 
 type StatusColor = 'yellow' | 'green' | 'red' | 'gray' | 'blue'
 
@@ -80,7 +72,7 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
-  processingIds: {  // Add new prop for processing state
+  processingIds: {
     type: Array as PropType<number[]>,
     default: () => []
   }
@@ -127,6 +119,7 @@ const formatDate = (date: string) => {
   })
 }
 
+// The status types and colors remain the same
 const getStatusColor = (status: Invitation['status']): StatusColor => {
   const colors: Record<Invitation['status'], StatusColor> = {
     'Pending': 'yellow',

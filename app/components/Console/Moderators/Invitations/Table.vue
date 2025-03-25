@@ -43,6 +43,7 @@
         <UDropdown
           :items="getActionItems(row)"
           :disabled="isProcessing(row.id)"
+          :popper="{ arrow: true, placement: 'bottom-start' }"
         >
           <UButton
             color="gray"
@@ -50,6 +51,7 @@
             icon="i-heroicons-ellipsis-horizontal"
             :ui="{ rounded: 'rounded-full' }"
             :loading="isProcessing(row.id)"
+            :disabled="isProcessing(row.id)"
           />
         </UDropdown>
       </template>
@@ -59,19 +61,7 @@
 
 <script setup lang="ts">
 import type { PropType } from 'vue'
-
-export interface Invitation {
-  id: number
-  name: string
-  email: string
-  classes: {
-    id: number
-    name: string
-  }[]
-  invitedAt: string
-  invitedBy: string
-  status: 'Pending' | 'Expired' | 'Revoked' | 'Rejected' | 'Accepted' | 'Used'
-}
+import type { Invitation } from '~/types/supabase'
 
 type StatusColor = 'yellow' | 'green' | 'red' | 'gray' | 'blue'
 
@@ -85,7 +75,7 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
-  processingIds: {  // Add new prop for processing state
+  processingIds: {
     type: Array as PropType<number[]>,
     default: () => []
   }
@@ -130,22 +120,17 @@ const formatDate = (date: string) => {
   })
 }
 
-const formatClassesDisplay = (classes: any[]) => {
+const formatClassesDisplay = (classes?: Array<{ id: number; name: string }>) => {
   if (!classes?.length) return 'No classes assigned'
   
-  // Handle the case where classes are in label/value format
-  const normalizedClasses = classes.map(c => {
-    if (c.value && c.label) {
-      return c.value
-    }
-    return c
-  })
+  const firstClass = classes[0]
+  if (!firstClass?.name) return 'No classes assigned'
 
-  if (normalizedClasses.length === 1) {
-    return normalizedClasses[0].name
+  if (classes.length === 1) {
+    return firstClass.name
   }
 
-  return `${normalizedClasses[0].name} and ${normalizedClasses.length - 1} more ${normalizedClasses.length - 1 === 1 ? 'class' : 'classes'}`
+  return `${firstClass.name} and ${classes.length - 1} more ${classes.length - 1 === 1 ? 'class' : 'classes'}`
 }
 
 const getStatusColor = (status: Invitation['status']): StatusColor => {
@@ -160,12 +145,10 @@ const getStatusColor = (status: Invitation['status']): StatusColor => {
   return colors[status]
 }
 
-// Add isProcessing helper function
 const isProcessing = (invitationId: number) => {
   return props.processingIds?.includes(invitationId)
 }
 
-// Update getActionItems function to properly handle loading states
 const getActionItems = (row: Invitation) => {
   const items = []
   const actionGroup = []
@@ -192,8 +175,8 @@ const getActionItems = (row: Invitation) => {
     })
   }
 
-  // All invitations except Used ones can be deleted
-  if (row.status !== 'Used') {
+  // Show delete button for all statuses except Pending
+  if (row.status !== 'Pending') {
     actionGroup.push({
       label: 'Delete',
       icon: 'i-heroicons-trash',
