@@ -113,28 +113,48 @@
 import { ref, reactive, computed } from 'vue'
 import { Motion } from 'motion-v'
 import { z } from 'zod'
+import type { Router } from 'vue-router'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Database } from '@/types/supabase'
 import PrimaryButton from '@/components/Landing/PrimaryButton.vue'
 import SecondaryButton from '@/components/Landing/SecondaryButton.vue'
 
-const supabase = useSupabaseClient()
+const supabase = useSupabaseClient<Database>()
 const router = useRouter()
 const route = useRoute()
-const toast = useToast()
+const { showSuccess, showError } = useNotification()
 
 const isLoading = ref(false)
+
+// Types for invitation data
+interface InvitationData {
+    id: number
+    email: string
+    role: 'STUDENT' | 'MODERATOR'
+    metadata?: {
+        grade?: string
+    }
+}
 
 // Get email and token from URL
 const email = ref(route.query.email as string || '')
 const token = ref(route.query.token as string || '')
 
 // Invitation state management
-const invitationState = ref<'active' | 'used' | 'expired' | 'invalid'>('invalid') // Default to invalid until verified
+const invitationState = ref<'active' | 'used' | 'expired' | 'invalid'>('invalid')
 const invitationRole = ref<'STUDENT' | 'MODERATOR'>('STUDENT')
 const invitationGrade = ref<number | null>(null)
 const invitationId = ref<number | null>(null)
 
+// Form state interface
+interface FormState {
+    email: string
+    password: string
+    confirmPassword: string
+}
+
 // Form state
-const formState = reactive({
+const formState = reactive<FormState>({
     email: email.value,
     password: '',
     confirmPassword: ''
@@ -151,7 +171,35 @@ const schema = z.object({
 }).refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match",
     path: ["confirmPassword"],
-})
+}) satisfies z.ZodType<FormState>
+
+const handleSubmit = async (event: { data: FormState }) => {
+    try {
+        isLoading.value = true
+
+        if (!token.value) {
+            throw new Error('Invalid invitation token')
+        }
+
+        // Call the sign-up endpoint
+        await $fetch('/api/auth/sign-up', {
+            method: 'POST',
+            body: {
+                email: formState.email,
+                password: formState.password,
+                token: token.value
+            }
+        })
+
+        showSuccess('Your account has been created successfully. You can now sign in.')
+
+        await router.push('/auth/sign-in')
+    } catch (error: any) {
+        showError(error?.data?.message || 'An error occurred during registration')
+    } finally {
+        isLoading.value = false
+    }
+}
 
 // Update invitation validation to use the API
 const validateInvitation = async () => {
@@ -161,7 +209,7 @@ const validateInvitation = async () => {
     }
 
     try {
-        const response = await $fetch('/api/invitations/verify', {
+        const response = await $fetch<{ invitation: InvitationData }>('/api/invitations/verify', {
             method: 'POST',
             body: {
                 email: email.value,
@@ -197,42 +245,6 @@ const validateInvitation = async () => {
         } else {
             invitationState.value = 'invalid'
         }
-    }
-}
-
-const handleSubmit = async (event: any) => {
-    try {
-        isLoading.value = true
-
-        if (!token.value) {
-            throw new Error('Invalid invitation token')
-        }
-
-        // Call the sign-up endpoint
-        await $fetch('/api/auth/sign-up', {
-            method: 'POST',
-            body: {
-                email: formState.email,
-                password: formState.password,
-                token: token.value
-            }
-        })
-
-        toast.add({
-            title: 'Account Created',
-            description: 'Your account has been created successfully. You can now sign in.',
-            color: 'green'
-        })
-
-        await router.push('/auth/sign-in')
-    } catch (error: any) {
-        toast.add({
-            title: 'Error',
-            description: error?.data?.message || 'An error occurred during registration',
-            color: 'red'
-        })
-    } finally {
-        isLoading.value = false
     }
 }
 

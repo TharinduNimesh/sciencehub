@@ -168,13 +168,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import type { Database, Invitation } from '~/types/supabase'
+import type { Invitation } from '~/types/supabase'
 import type { Moderator } from '~/components/Console/Moderators/Table.vue'
-import { useInvitations } from '~/composables/useInvitations'
 import { isMobileScreen } from '~/lib/utils'
-import { useNotification } from '~/composables/useNotification'
-import { useRouter } from '#app'
 
 // Page meta
 definePageMeta({ layout: 'console' })
@@ -182,12 +178,6 @@ definePageMeta({ layout: 'console' })
 // Composables
 const { createInvitation, fetchInvitations, updateInvitationStatus, deleteInvitation, resendInvitation } = useInvitations()
 const notification = useNotification()
-const router = useRouter()
-
-// Navigation
-const navigateToModerator = (moderator: Moderator) => {
-  router.push(`/console/moderators/${moderator.id}`)
-}
 
 // Reactive state
 const isMobile = ref(isMobileScreen())
