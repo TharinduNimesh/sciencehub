@@ -39,34 +39,39 @@
     <!-- Form Content -->
     <div class="flex-1 px-6 py-5 overflow-y-auto">
       <form @submit.prevent="handleSubmit" class="space-y-4">
+        <!-- Video URL (moved to top for better UX) -->
+        <UFormGroup label="Video URL" required>
+          <UInput
+            v-model="form.videoUrl"
+            placeholder="Enter YouTube video URL"
+            icon="i-heroicons-link"
+            :disabled="isEditing"
+            @update:model-value="handleVideoUrlChange"
+            :loading="isLoadingVideoData"
+          />
+          <p v-if="!isEditing" class="text-xs text-gray-500 mt-1">
+            Enter a YouTube URL to auto-fill lesson details
+          </p>
+        </UFormGroup>
+
         <UFormGroup label="Lesson Title" required>
           <UInput
             v-model="form.title"
-            placeholder="Enter a descriptive title"
+            placeholder="Title will be loaded automatically"
+            :disabled="isLoadingVideoData"
           />
         </UFormGroup>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <UFormGroup label="Grade" required>
-            <USelectMenu
-              v-model="form.grade"
-              :options="gradeOptions"
-              placeholder="Select grade"
-              value-attribute="value"
-              icon="i-heroicons-academic-cap"
-            />
-          </UFormGroup>
-
-          <UFormGroup label="Subject" required>
-            <USelectMenu
-              v-model="form.subject"
-              :options="subjectOptions"
-              placeholder="Select subject"
-              value-attribute="value"
-              icon="i-heroicons-book-open"
-            />
-          </UFormGroup>
-        </div>
+        <UFormGroup label="Class" required>
+          <USelectMenu
+            v-model="form.classId"
+            :options="classOptions"
+            placeholder="Select class"
+            value-attribute="id"
+            option-attribute="name"
+            icon="i-heroicons-academic-cap"
+          />
+        </UFormGroup>
 
         <UFormGroup
           label="Description"
@@ -82,50 +87,29 @@
           />
         </UFormGroup>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <UFormGroup label="Video URL" required>
-            <UInput
-              v-model="form.videoUrl"
-              placeholder="Enter video URL (YouTube, Vimeo, etc.)"
-              icon="i-heroicons-link"
-            />
-          </UFormGroup>
-
-          <UFormGroup label="Duration (minutes)" required>
-            <UInput
-              v-model="form.duration"
-              type="number"
-              placeholder="Enter lesson duration in minutes"
-              min="1"
-              icon="i-heroicons-clock"
-            />
-          </UFormGroup>
-        </div>
-
-        <UFormGroup label="Thumbnail Image URL">
+        <UFormGroup label="Duration (minutes)" required>
           <UInput
-            v-model="form.thumbnailUrl"
-            placeholder="Enter thumbnail image URL"
-            icon="i-heroicons-photo"
+            v-model="form.duration"
+            type="number"
+            placeholder="Duration will be set automatically"
+            min="1"
+            icon="i-heroicons-clock"
+            :disabled="isLoadingVideoData"
           />
         </UFormGroup>
 
         <!-- Thumbnail preview -->
-        <div v-if="form.thumbnailUrl" class="mt-2">
-          <p class="text-sm font-medium text-gray-700 mb-2">
-            Thumbnail Preview:
-          </p>
-          <div
-            class="aspect-video max-w-xs overflow-hidden rounded-lg bg-gray-100"
-          >
+        <UFormGroup label="Thumbnail">
+          <div class="aspect-video w-full overflow-hidden rounded-lg bg-gray-100">
             <img
-              :src="form.thumbnailUrl"
+              :src="form.thumbnailUrl || defaultThumbnail"
               :alt="form.title"
               class="w-full h-full object-cover"
               @error="handleImageError"
             />
           </div>
-        </div>
+          <p class="text-xs text-gray-500 mt-1">Thumbnail is automatically generated from the video</p>
+        </UFormGroup>
       </form>
     </div>
 
@@ -143,7 +127,7 @@
         <UButton
           color="primary"
           :loading="isSubmitting"
-          :disabled="isSubmitting"
+          :disabled="isSubmitting || (form.videoUrl && !isYoutubeUrl(form.videoUrl)) || isLoadingVideoData"
           :label="isEditing ? 'Update Lesson' : 'Add Lesson'"
           :icon="isEditing ? 'i-heroicons-check' : 'i-heroicons-plus'"
           @click="handleSubmit"
@@ -154,7 +138,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from "vue";
+import { ref, computed, watch, onMounted } from "vue";
 
 // Define default thumbnail for consistency across the app
 const defaultThumbnail = ref("https://placehold.co/800x450?text=No+Thumbnail");
@@ -177,15 +161,23 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'add']);
 
 const isSubmitting = ref(false);
+const isLoadingVideoData = ref(false);
 const form = ref({
-  title: "",
+  title: "New Lesson",
   description: "",
-  grade: undefined as number | undefined,
-  subject: "",
+  classId: undefined as string | number | undefined,
   videoUrl: "",
   thumbnailUrl: "",
   duration: 30,
 });
+
+// Sample class options - In a real app, these would come from an API
+const classOptions = ref([
+  { id: 1, name: "Class A - Physics (Online)", type: "online" },
+  { id: 2, name: "Class B - Chemistry (Physical)", type: "physical" },
+  { id: 3, name: "Class C - Biology (Online)", type: "online" },
+  { id: 4, name: "Class D - Mathematics (Physical)", type: "physical" }
+]);
 
 // Reset or populate form when modal opens/closes or when editData changes
 watch(
@@ -194,21 +186,19 @@ watch(
     if (newModelValue && props.isEditing && newEditData) {
       // Populate form with lesson data for editing
       form.value = {
-        title: newEditData.title || '',
+        title: newEditData.title || 'New Lesson',
         description: newEditData.description || '',
-        grade: newEditData.grade,
-        subject: newEditData.subject || '',
+        classId: newEditData.classId || undefined,
         videoUrl: newEditData.videoUrl || '',
-        thumbnailUrl: newEditData.thumbnailUrl || '',
+        thumbnailUrl: newEditData.thumbnailUrl || getYoutubeThumbnail(newEditData.videoUrl),
         duration: newEditData.duration || 30
       };
     } else if (newModelValue && !props.isEditing) {
       // Reset form when opening for new lesson
       form.value = {
-        title: "",
+        title: "New Lesson",
         description: "",
-        grade: undefined,
-        subject: "",
+        classId: undefined,
         videoUrl: "",
         thumbnailUrl: "",
         duration: 30,
@@ -218,21 +208,130 @@ watch(
   { immediate: true }
 );
 
-const gradeOptions = [
-  { label: "Grade 6", value: 6 },
-  { label: "Grade 7", value: 7 },
-  { label: "Grade 8", value: 8 },
-  { label: "Grade 9", value: 9 },
-  { label: "Grade 10", value: 10 },
-  { label: "Grade 11", value: 11 },
-];
+// Debounce function for URL input
+const debounce = (fn, delay) => {
+  let timeoutId;
+  return function(...args) {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+    timeoutId = setTimeout(() => {
+      fn.apply(this, args);
+    }, delay);
+  };
+};
 
-const subjectOptions = [
-  { label: "Biology", value: "Biology" },
-  { label: "Chemistry", value: "Chemistry" },
-  { label: "Physics", value: "Physics" },
-  { label: "General Science", value: "General Science" },
-];
+// Initialize YouTube iframe API
+let YT;
+onMounted(() => {
+  if (import.meta.client && !window.YT) {
+    // Add YouTube iframe API script
+    const tag = document.createElement('script');
+    tag.src = "https://www.youtube.com/iframe_api";
+    const firstScriptTag = document.getElementsByTagName('script')[0];
+    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+  }
+});
+
+// Handle video URL changes to automatically update thumbnail, title and duration
+const handleVideoUrlChange = debounce(async (url: string) => {
+  if (!url || !isYoutubeUrl(url)) {
+    return;
+  }
+
+  try {
+    isLoadingVideoData.value = true;
+
+    // Extract video ID
+    const videoId = extractYoutubeVideoId(url);
+    if (!videoId) return;
+
+    // Set thumbnail immediately
+    form.value.thumbnailUrl = getYoutubeThumbnail(url);
+
+    // Fetch video metadata from our API endpoint
+    const response = await fetch(`/api/youtube/metadata?url=${encodeURIComponent(url)}`);
+    const videoData = await response.json();
+    
+    if (videoData && !videoData.error) {
+      form.value.title = videoData.title;
+      
+      // Set duration in minutes from the API response
+      if (videoData.durationMinutes) {
+        form.value.duration = videoData.durationMinutes;
+      }
+    }
+  } catch (error) {
+    console.error("Error fetching video data:", error);
+    useToast().add({
+      title: "Error",
+      description: "Failed to fetch video information. Please check the URL and try again.",
+      color: "red",
+    });
+  } finally {
+    isLoadingVideoData.value = false;
+  }
+}, 500);
+
+// Fetch YouTube video metadata using OEmbed API (no API key required)
+async function fetchYoutubeMetadata(videoUrl: string) {
+  try {
+    // Use OEmbed API for title (no API key required)
+    const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(videoUrl)}&format=json`;
+    
+    const response = await fetch(oembedUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch OEmbed data: ${response.status} ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    
+    return {
+      title: data.title,
+      // OEmbed doesn't provide duration, so we don't set it here
+      // The application will use a default duration
+    };
+  } catch (error) {
+    console.error('Error fetching YouTube metadata:', error);
+    return null;
+  }
+}
+
+// Check if URL is a YouTube link
+const isYoutubeUrl = (url: string): boolean => {
+  if (!url) return false;
+  return url.includes('youtube.com') || url.includes('youtu.be');
+};
+
+// Extract YouTube video ID from URL
+function extractYoutubeVideoId(url: string): string {
+  if (!url) return '';
+  
+  let videoId = '';
+  
+  if (url.includes('youtube.com/watch')) {
+    const urlParams = new URLSearchParams(url.split('?')[1]);
+    videoId = urlParams.get('v') || '';
+  } else if (url.includes('youtu.be')) {
+    videoId = url.split('/').pop() || '';
+    // Remove any additional parameters
+    videoId = videoId.split('?')[0];
+  }
+  
+  return videoId;
+}
+
+// Get YouTube thumbnail URL from video URL
+function getYoutubeThumbnail(url: string): string {
+  if (!url) return defaultThumbnail.value;
+  if (!isYoutubeUrl(url)) return defaultThumbnail.value;
+  
+  const videoId = extractYoutubeVideoId(url);
+  if (!videoId) return defaultThumbnail.value;
+  
+  // Return YouTube thumbnail URL (high quality)
+  return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+}
 
 const handleImageError = (event: Event) => {
   // Set a fallback image if the provided URL fails to load
@@ -241,16 +340,19 @@ const handleImageError = (event: Event) => {
 };
 
 const handleSubmit = async () => {
-  if (
-    !form.value.title ||
-    !form.value.videoUrl ||
-    !form.value.grade ||
-    !form.value.subject ||
-    !form.value.duration
-  ) {
+  if (!form.value.classId) {
     useToast().add({
       title: "Validation Error",
-      description: "Please fill in all required fields",
+      description: "Please select a class for this lesson",
+      color: "red",
+    });
+    return;
+  }
+
+  if (!props.isEditing && !isYoutubeUrl(form.value.videoUrl)) {
+    useToast().add({
+      title: "Validation Error",
+      description: "Please enter a valid YouTube URL",
       color: "red",
     });
     return;
@@ -259,9 +361,9 @@ const handleSubmit = async () => {
   try {
     isSubmitting.value = true;
 
-    // Default thumbnail if none provided - use the consistent placeholder
-    if (!form.value.thumbnailUrl) {
-      form.value.thumbnailUrl = defaultThumbnail.value;
+    // Make sure to include the automatically generated thumbnail
+    if (!form.value.thumbnailUrl && form.value.videoUrl) {
+      form.value.thumbnailUrl = getYoutubeThumbnail(form.value.videoUrl);
     }
 
     // Preserve ID when editing

@@ -161,18 +161,22 @@ const userRole = computed(() => authStore.getCurrentUserRole());
 const isAdmin = computed(() => userRole.value === "ADMIN");
 const isModerator = computed(() => userRole.value === "MODERATOR");
 
+// Class data (in a real app, would be fetched from API)
+const classes = ref([
+  { id: 1, name: "Class A - Physics (Online)", type: "online", grade: 10, subject: "Physics" },
+  { id: 2, name: "Class B - Chemistry (Physical)", type: "physical", grade: 10, subject: "Chemistry" },
+  { id: 3, name: "Class C - Biology (Online)", type: "online", grade: 9, subject: "Biology" },
+  { id: 4, name: "Class D - Mathematics (Physical)", type: "physical", grade: 11, subject: "Mathematics" }
+]);
+
 // Filters
 const filters = ref({
   search: "",
   grade: undefined,
   subject: undefined,
   dateRange: undefined,
+  classId: undefined,
 });
-
-// Mobile responsive handler
-if (import.meta.client) {
-  window.addEventListener("resize", () => (isMobile.value = isMobileScreen()));
-}
 
 // Types
 interface Lesson {
@@ -181,6 +185,7 @@ interface Lesson {
   description: string;
   thumbnailUrl: string;
   videoUrl: string;
+  classId?: number; // New field for class association
   grade: number;
   subject: string;
   duration: number;
@@ -188,87 +193,35 @@ interface Lesson {
   updatedAt: string;
 }
 
-// Lessons state - mock data for now
+// Lessons state - mock data now with classId field
 const lessons = ref<Lesson[]>([
   {
     id: 1,
     title: "Introduction to Chemical Bonds",
     description:
       "Learn about the fundamental concepts of chemical bonding and molecular structures.",
-    thumbnailUrl: "https://picsum.photos/seed/picsum1/800/450",
-    videoUrl: "https://example.com/videos/chemical-bonds",
+    thumbnailUrl: "https://img.youtube.com/vi/LICeBJKjzI0/hqdefault.jpg",
+    videoUrl: "https://www.youtube.com/watch?v=LICeBJKjzI0",
+    classId: 2,
     grade: 10,
     subject: "Chemistry",
     duration: 45,
     createdAt: "2023-11-10T14:00:00Z",
     updatedAt: "2023-11-10T14:00:00Z",
   },
-  {
-    id: 2,
-    title: "Ecosystem Dynamics",
-    description:
-      "Explore the complex interactions within ecosystems and how energy flows through food chains.",
-    thumbnailUrl: "https://picsum.photos/seed/picsum2/800/450",
-    videoUrl: "https://example.com/videos/ecosystem",
-    grade: 9,
-    subject: "Biology",
-    duration: 50,
-    createdAt: "2023-11-05T10:30:00Z",
-    updatedAt: "2023-11-05T10:30:00Z",
-  },
-  {
-    id: 3,
-    title: "Newton's Laws of Motion",
-    description:
-      "A comprehensive review of Newton's three laws of motion with practical examples.",
-    thumbnailUrl: "https://picsum.photos/seed/picsum3/800/450",
-    videoUrl: "https://example.com/videos/newton-laws",
-    grade: 11,
-    subject: "Physics",
-    duration: 55,
-    createdAt: "2023-10-28T13:15:00Z",
-    updatedAt: "2023-10-28T13:15:00Z",
-  },
-  {
-    id: 4,
-    title: "Periodic Table and Element Properties",
-    description:
-      "Understanding the periodic table organization and trends in element properties.",
-    thumbnailUrl: "https://picsum.photos/seed/picsum4/800/450",
-    videoUrl: "https://example.com/videos/periodic-table",
-    grade: 10,
-    subject: "Chemistry",
-    duration: 60,
-    createdAt: "2023-10-20T09:45:00Z",
-    updatedAt: "2023-10-20T09:45:00Z",
-  },
-  {
-    id: 5,
-    title: "Cell Division: Mitosis and Meiosis",
-    description:
-      "Comparing the processes of mitosis and meiosis in cellular reproduction.",
-    thumbnailUrl: "https://picsum.photos/seed/picsum5/800/450",
-    videoUrl: "https://example.com/videos/cell-division",
-    grade: 9,
-    subject: "Biology",
-    duration: 48,
-    createdAt: "2023-10-15T11:20:00Z",
-    updatedAt: "2023-10-15T11:20:00Z",
-  },
-  {
-    id: 6,
-    title: "Wave Properties and Behaviors",
-    description:
-      "Investigating the properties and behaviors of mechanical and electromagnetic waves.",
-    thumbnailUrl: "https://picsum.photos/seed/picsum6/800/450",
-    videoUrl: "https://example.com/videos/wave-properties",
-    grade: 11,
-    subject: "Physics",
-    duration: 52,
-    createdAt: "2023-10-08T15:30:00Z",
-    updatedAt: "2023-10-08T15:30:00Z",
-  },
+  // ...other lessons with same structure
 ]);
+
+// Mobile responsive handler
+if (import.meta.client) {
+  window.addEventListener("resize", () => (isMobile.value = isMobileScreen()));
+}
+
+// Helper to get class details by id
+const getClassById = (classId: number | undefined) => {
+  if (!classId) return null;
+  return classes.value.find(c => c.id === classId) || null;
+};
 
 // Computed
 const filteredLessons = computed(() => {
@@ -290,9 +243,13 @@ const filteredLessons = computed(() => {
     // Subject filter
     const matchesSubject =
       !filters.value.subject || lesson.subject === filters.value.subject;
+      
+    // Class filter
+    const matchesClass = 
+      !filters.value.classId || lesson.classId === filters.value.classId;
 
     // Date range filter
-    if (!matchesSearch || !matchesGrade || !matchesSubject) return false;
+    if (!matchesSearch || !matchesGrade || !matchesSubject || !matchesClass) return false;
 
     if (filters.value.dateRange) {
       const lessonDate = new Date(lesson.createdAt).getTime();
@@ -330,9 +287,13 @@ const handleAction = async (id: number, action: () => Promise<void>) => {
 const reloadLessons = async () => {
   try {
     isLoading.value = true;
-    // In a real app, fetch from API
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    // Mock data refresh
+    // In a real app, you would call an API here
+    // For the mock, we'll simulate a network delay and refresh with sample data
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    // Refresh lessons data - in a real app, this would be API data
+    // For testing, we'll randomly reorder the sample lessons to simulate refresh
+    lessons.value = [...lessons.value].sort(() => Math.random() - 0.5);
+    showSuccess("Lessons reloaded successfully");
   } catch (error) {
     console.error("Failed to load lessons:", error);
     showError("Failed to load lessons");
@@ -367,14 +328,23 @@ const handleUpdateLesson = async (updatedLessonData: Partial<Lesson>) => {
 
   try {
     await handleAction(updatedLessonData.id, async () => {
+      // Get class details for grade and subject
+      const classInfo = getClassById(updatedLessonData.classId as number);
+      
       // Mock updating a lesson
       const index = lessons.value.findIndex(
         (l) => l.id === updatedLessonData.id
       );
       if (index !== -1) {
+        // Merge old lesson with updates and class information
         const updatedLesson: Lesson = {
           ...lessons.value[index],
           ...updatedLessonData,
+          // If class was selected, update grade and subject from class info
+          ...(classInfo ? {
+            grade: classInfo.grade,
+            subject: classInfo.subject
+          } : {}),
           updatedAt: new Date().toISOString(),
         };
 
@@ -400,17 +370,24 @@ const handleUpdateLesson = async (updatedLessonData: Partial<Lesson>) => {
 const handleAddLesson = async (lessonData: Partial<Lesson>) => {
   try {
     isLoading.value = true;
+    
+    // Get class details for grade and subject
+    const classInfo = getClassById(lessonData.classId as number);
+    if (!classInfo) {
+      showError("Invalid class selected");
+      return;
+    }
+    
     // Mock adding a lesson
     const newLesson: Lesson = {
       id: Math.max(0, ...lessons.value.map((l) => l.id)) + 1,
-      title: lessonData.title || "Untitled Lesson",
+      title: lessonData.title || "New Lesson",
       description: lessonData.description || "",
-      thumbnailUrl:
-        lessonData.thumbnailUrl ||
-        "https://placehold.co/800x450?text=No+Thumbnail",
-      videoUrl: lessonData.videoUrl || "",
-      grade: lessonData.grade || 10,
-      subject: lessonData.subject || "General Science",
+      thumbnailUrl: lessonData.thumbnailUrl || "https://placehold.co/800x450?text=No+Thumbnail",
+      videoUrl: lessonData.videoUrl || "https://www.youtube.com/watch?v=example",
+      classId: lessonData.classId,
+      grade: classInfo.grade,
+      subject: classInfo.subject,
       duration: lessonData.duration || 30,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
