@@ -52,6 +52,32 @@ export interface Database {
           created_at?: string
         }
       }
+      classes: {
+        Row: {
+          id: bigint
+          name: string
+          description: string | null
+          date: string
+          start_time: string
+          end_time: string
+          method: 'VirtualRecurringSeries' | 'VirtualSingleSession' | 'InPersonRecurringSeries' | 'InPersonSingleSession'
+          is_active: boolean
+          tags: string[]
+          created_at: string
+          grade: number
+        }
+        Insert: {
+          name: string
+          description?: string | null
+          date: string
+          start_time: string
+          end_time: string
+          method: 'VirtualRecurringSeries' | 'VirtualSingleSession' | 'InPersonRecurringSeries' | 'InPersonSingleSession'
+          is_active?: boolean
+          tags: string[]
+          grade: number
+        }
+      }
       invitations: {
         Row: {
           id: number

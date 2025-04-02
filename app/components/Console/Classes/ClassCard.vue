@@ -1,65 +1,56 @@
 <template>
-  <div class="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200">
+  <div
+    class="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200"
+  >
     <div class="p-6 space-y-4">
       <!-- Header Section -->
-      <div class="flex justify-between items-start">
-        <div class="space-y-1">
+      <div class="flex justify-between items-start gap-4">
+        <div class="space-y-1 flex-1">
           <h3 class="text-lg font-semibold text-gray-900">
             {{ classItem.name }}
           </h3>
-          <p class="text-sm text-gray-600 line-clamp-2">
+          <p class="text-sm text-gray-500 line-clamp-2">
             {{ classItem.description }}
           </p>
         </div>
-        <UDropdown
-          :popper="{ arrow: true }"
-          :items="menuItems"
-          :ui="{
-            item: {
-              base: 'flex items-center gap-x-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100',
-            },
-          }"
-        >
-          <UButton
-            color="gray"
-            variant="ghost"
-            icon="i-heroicons-ellipsis-horizontal"
-            :ui="{ rounded: 'rounded-full' }"
-          />
-        </UDropdown>
+        <UBadge :color="classItem.is_active ? 'green' : 'gray'" size="sm">
+          {{ classItem.is_active ? "Active" : "Inactive" }}
+        </UBadge>
       </div>
-
-      <UDivider />
 
       <!-- Method & Schedule Section -->
       <div class="space-y-3">
-        <!-- Method Badge -->
-        <div class="flex items-center gap-2">
+        <div class="flex items-center justify-between">
+          <!-- Method Badge -->
           <UBadge
             :color="methodColor"
             :icon="methodIcon"
             size="sm"
             class="font-medium"
+            variant="soft"
           >
             {{ formatMethodLabel(classItem.method) }}
+          </UBadge>
+          <UBadge color="gray" variant="soft" size="sm">
+            Grade {{ classItem.grade }}
           </UBadge>
         </div>
 
         <!-- Schedule -->
-        <div class="flex items-center gap-2 text-sm text-gray-600">
-          <div class="i-heroicons-calendar text-lg" />
-          <span>{{ classItem.date }}</span>
-        </div>
-        <div class="flex items-center gap-2 text-sm text-gray-600">
-          <div class="i-heroicons-clock text-lg" />
-          <span
-            >{{ formatTime(classItem.start_time) }} -
-            {{ formatTime(classItem.end_time) }}</span
-          >
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2 text-sm text-gray-600">
+            <div class="i-heroicons-calendar text-lg" />
+            <span>{{ formatDisplayDate }}</span>
+          </div>
+          <div class="flex items-center gap-2 text-sm text-gray-600">
+            <div class="i-heroicons-clock text-lg" />
+            <span
+              >{{ formatTime(classItem.start_time) }} -
+              {{ formatTime(classItem.end_time) }}</span
+            >
+          </div>
         </div>
       </div>
-
-      <UDivider />
 
       <!-- Tags Section -->
       <div class="flex flex-wrap gap-2">
@@ -74,65 +65,56 @@
         </UBadge>
       </div>
 
-      <UDivider />
-
-      <!-- Footer Section -->
-      <div class="space-y-3">
-        <!-- Status & Creation Date -->
-        <div class="flex items-center justify-between">
-          <UBadge :color="classItem.is_active ? 'green' : 'gray'" size="sm">
-            {{ classItem.is_active ? "Active" : "Inactive" }}
-          </UBadge>
-          <span class="text-xs text-gray-500">
-            Created {{ formatDate(classItem.created_at) }}
-          </span>
-        </div>
-
-        <!-- Student Count & Actions -->
-        <div class="flex items-center justify-between">
-          <div class="flex items-baseline gap-1 text-sm">
-            <div class="i-heroicons-users text-lg text-gray-600" />
-            <span class="text-gray-600">{{ classItem.student_count }}</span>
-            <span class="text-xs text-gray-500">
-              {{
-                classItem.max_students ? `/ ${classItem.max_students}` : ""
-              }}
-              students
-            </span>
-            <UBadge
-              v-if="
-                classItem.max_students &&
-                classItem.student_count >= classItem.max_students
-              "
-              color="red"
+      <!-- Actions Section -->
+      <div class="flex items-center justify-between pt-2">
+        <span class="text-xs text-gray-500">
+          Created {{ formatDate(classItem.created_at) }}
+        </span>
+        <div v-if="classItem.is_active" class="flex items-center gap-2">
+          <UTooltip text="Edit class details" :popper="{ arrow: true }">
+            <UButton
+              color="orange"
               variant="soft"
-              size="xs"
-            >
-              Full
-            </UBadge>
-            <UBadge
-              v-else-if="
-                classItem.max_students &&
-                classItem.student_count >= classItem.max_students * 0.9
-              "
+              icon="i-heroicons-pencil-square"
+              :ui="{ rounded: 'rounded-full' }"
+              size="sm"
+              @click="$emit('edit', classItem)"
+            />
+          </UTooltip>
+          <UTooltip text="Manage students" :popper="{ arrow: true }">
+            <UButton
+              color="blue"
+              variant="soft"
+              icon="i-heroicons-users"
+              :ui="{ rounded: 'rounded-full' }"
+              size="sm"
+              @click="$emit('view-students', classItem)"
+            />
+          </UTooltip>
+          <UTooltip
+            v-if="isRecurringClass"
+            text="Cancel this week"
+            :popper="{ arrow: true }"
+          >
+            <UButton
               color="yellow"
               variant="soft"
-              size="xs"
-            >
-              Almost Full
-            </UBadge>
-          </div>
-
-          <UButton
-            size="sm"
-            color="gray"
-            variant="soft"
-            icon="i-heroicons-user-group"
-            :ui="{ rounded: 'rounded-full' }"
-            @click="$emit('view-students', classItem)"
-          >
-            Students
-          </UButton>
+              icon="i-heroicons-x-circle"
+              :ui="{ rounded: 'rounded-full' }"
+              size="sm"
+              @click="isCancelDialogOpen = true"
+            />
+          </UTooltip>
+          <UTooltip text="End this class permanently" :popper="{ arrow: true }">
+            <UButton
+              color="red"
+              variant="soft"
+              icon="i-heroicons-no-symbol"
+              :ui="{ rounded: 'rounded-full' }"
+              size="sm"
+              @click="isEndClassDialogOpen = true"
+            />
+          </UTooltip>
         </div>
       </div>
     </div>
@@ -148,10 +130,21 @@
     cancel-text="No, Keep Class"
     @confirm="handleConfirmCancel"
   />
+
+  <!-- End Class Confirmation Dialog -->
+  <CommonConfirmationDialog
+    v-model="isEndClassDialogOpen"
+    title="End Class"
+    :description="endClassDialogDescription"
+    type="danger"
+    confirm-text="Yes, End Class"
+    cancel-text="No, Keep Class"
+    @confirm="handleConfirmEnd"
+  />
 </template>
 
 <script setup lang="ts">
-import type { DropdownItem } from '#ui/types'
+import type { DropdownItem } from "#ui/types";
 
 type ClassMethod =
   | "InPersonSingleSession"
@@ -170,15 +163,14 @@ interface ClassItem {
   is_active: boolean;
   tags: string[];
   created_at: string;
-  student_count: number;
-  max_students: number | null;
+  grade: number; // Adding the missing grade property
 }
 
 interface MenuItem {
-  label: string
-  icon: string
-  click: () => void
-  class?: string
+  label: string;
+  icon: string;
+  click: () => void;
+  class?: string;
 }
 
 const props = defineProps<{
@@ -186,14 +178,20 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: 'view-students', classItem: ClassItem): void
-  (e: 'edit', classItem: ClassItem): void
-  (e: 'delete', classItem: ClassItem): void
-  (e: 'cancel-week', classItem: ClassItem): void
-}>()
+  (e: "view-students", classItem: ClassItem): void;
+  (e: "edit", classItem: ClassItem): void;
+  (e: "delete", classItem: ClassItem): void;
+  (e: "cancel-week", classItem: ClassItem): void;
+}>();
 
-// Dialog state
+// Dialog states
 const isCancelDialogOpen = ref(false)
+const isEndClassDialogOpen = ref(false)
+
+const endClassDialogDescription = computed(() => 
+  `Are you sure you want to end the class "${props.classItem.name}"? This action cannot be undone and will permanently deactivate the class. Students will be notified of this change.`
+)
+
 const cancelDialogDescription = computed(() => {
   const dates = props.classItem.date
   return `Are you sure you want to cancel this week's class scheduled for ${dates}? Students will be notified of this cancellation.`
@@ -202,6 +200,11 @@ const cancelDialogDescription = computed(() => {
 const handleConfirmCancel = () => {
   emit('cancel-week', props.classItem)
   isCancelDialogOpen.value = false
+}
+
+const handleConfirmEnd = () => {
+  emit('delete', props.classItem)
+  isEndClassDialogOpen.value = false
 }
 
 const methodColor = computed(() => {
@@ -243,6 +246,43 @@ const formatMethodLabel = (method: ClassMethod) => {
   }
 };
 
+const isRecurringClass = computed(() => {
+  return props.classItem.method.endsWith("RecurringSeries");
+});
+
+const formatDisplayDate = computed(() => {
+  if (isRecurringClass.value) {
+    // Handle recurring class date patterns
+    const pattern = props.classItem.date;
+    switch (pattern) {
+      case "MON":
+        return "Every Monday";
+      case "TUE":
+        return "Every Tuesday";
+      case "WED":
+        return "Every Wednesday";
+      case "THU":
+        return "Every Thursday";
+      case "FRI":
+        return "Every Friday";
+      case "SAT":
+        return "Every Saturday";
+      case "SUN":
+        return "Every Sunday";
+      default:
+        return pattern;
+    }
+  } else {
+    // Handle single session dates
+    return new Date(props.classItem.date).toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  }
+});
+
 const formatTime = (time: string) => {
   return new Date(`2000-01-01T${time}`).toLocaleTimeString("en-US", {
     hour: "numeric",
@@ -280,7 +320,8 @@ const menuItems = computed(() => {
   items.push({
     label: 'End Class',
     icon: 'i-heroicons-no-symbol',
-    click: () => emit('delete', props.classItem)
+    class: 'text-red-600 hover:text-red-700',
+    click: () => isEndClassDialogOpen.value = true
   })
 
   return [items]

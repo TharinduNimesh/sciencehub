@@ -19,10 +19,10 @@
           <h3
             class="text-lg font-semibold leading-6 text-gray-900 dark:text-white"
           >
-            Create New Class
+            Edit Class
           </h3>
           <p class="text-sm text-gray-500 dark:text-gray-400">
-            Fill in the details below to create a new class
+            Update the class details below
           </p>
         </div>
         <UButton
@@ -41,8 +41,17 @@
         :state="state"
         :schema="classSchema"
         class="space-y-6"
-        @submit="handleCreateClass"
+        @submit="handleUpdateClass"
       >
+        <!-- ID Field (Read-only) -->
+        <UFormGroup label="Class ID" name="id">
+          <UInput
+            v-model="state.id"
+            disabled
+            :ui="{ disabled: 'cursor-not-allowed opacity-60 bg-gray-50' }"
+          />
+        </UFormGroup>
+
         <UFormGroup label="Class Name" name="name" required>
           <UInput
             v-model="state.name"
@@ -108,7 +117,6 @@
                 type="date"
                 icon="i-heroicons-calendar"
                 :min="new Date().toISOString().split('T')[0]"
-                @update:model-value="(val) => (state.date = val)"
               />
             </template>
           </UFormGroup>
@@ -119,6 +127,7 @@
               :options="tagOptions"
               multiple
               searchable
+              :create-tag="(tag: string) => ({ label: tag, value: tag })"
               placeholder="Search or add tags"
               icon="i-heroicons-tag"
             />
@@ -156,11 +165,11 @@
         />
         <UButton
           color="primary"
-          :loading="isCreating"
-          :disabled="isCreating"
-          label="Create Class"
-          icon="i-heroicons-plus"
-          @click="handleCreateClass"
+          :loading="isUpdating"
+          :disabled="isUpdating"
+          label="Update Class"
+          icon="i-heroicons-arrow-path"
+          @click="handleUpdateClass"
         />
       </div>
     </div>
@@ -171,27 +180,28 @@
 import { ref, computed, watch } from "vue"
 import { useNotification } from "~/composables/useNotification"
 import { createClassSchema, datePatternOptions, type ClassMethod } from '~/schemas/class'
-import { useClasses } from '~/composables/useClasses'
+import { useClasses, type Class } from '~/composables/useClasses'
 
-const { createClass } = useClasses()
-
-defineProps<{
+const props = defineProps<{
   modelValue: boolean
+  classData?: Class
 }>()
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void
-  (e: 'created'): void
+  (e: 'updated'): void
 }>()
 
 const notification = useNotification()
+const { updateClass } = useClasses()
 
 // State
-const isCreating = ref(false)
+const isUpdating = ref(false)
 const isTablet = ref(window?.innerWidth < 1024)
 
 // Form state
 const state = ref({
+  id: undefined as number | undefined,
   name: "",
   description: "",
   grade: undefined as number | undefined,
@@ -201,6 +211,23 @@ const state = ref({
   startTime: "",
   endTime: "",
 })
+
+// Watch for classData changes and update form
+watch(() => props.classData, (newClass) => {
+  if (newClass) {
+    state.value = {
+      id: newClass.id,
+      name: newClass.name,
+      description: newClass.description || "",
+      grade: newClass.grade,
+      method: newClass.method,
+      date: newClass.date,
+      tags: newClass.tags,
+      startTime: newClass.start_time,
+      endTime: newClass.end_time,
+    }
+  }
+}, { immediate: true })
 
 // Form options
 const classMethodOptions = [
@@ -258,11 +285,14 @@ const isRecurringClass = computed(() => {
 // Use the imported createClassSchema with isRecurringClass
 const classSchema = computed(() => createClassSchema(isRecurringClass.value))
 
-const handleCreateClass = async () => {
+const handleUpdateClass = async () => {
   try {
-    isCreating.value = true;
+    if (!state.value.id) return
+
+    isUpdating.value = true
     
-    await createClass({
+    await updateClass({
+      id: state.value.id,
       name: state.value.name,
       description: state.value.description,
       grade: state.value.grade!,
@@ -271,43 +301,31 @@ const handleCreateClass = async () => {
       startTime: state.value.startTime,
       endTime: state.value.endTime,
       tags: state.value.tags
-    });
+    })
 
-    notification.showSuccess("Class created successfully");
-    emit("update:modelValue", false);
-    emit("created");
-
-    // Reset form
-    state.value = {
-      name: "",
-      description: "",
-      grade: undefined,
-      method: undefined,
-      date: "",
-      tags: [],
-      startTime: "",
-      endTime: "",
-    };
+    notification.showSuccess("Class updated successfully")
+    emit("update:modelValue", false)
+    emit("updated")
   } catch (error) {
-    console.error("Error creating class:", error);
-    notification.showError("Failed to create class");
+    console.error("Error updating class:", error)
+    notification.showError("Failed to update class")
   } finally {
-    isCreating.value = false;
+    isUpdating.value = false
   }
-};
+}
 
 // Update isTablet on window resize
 if (import.meta.client) {
   window.addEventListener("resize", () => {
-    isTablet.value = window.innerWidth < 1024;
-  });
+    isTablet.value = window.innerWidth < 1024
+  })
 }
 
 // Add watch effect to reset date when method changes
 watch(
   () => state.value.method,
   () => {
-    state.value.date = "";
+    state.value.date = ""
   }
-);
+)
 </script>
