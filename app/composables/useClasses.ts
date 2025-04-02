@@ -27,6 +27,18 @@ export interface Class {
   grade: number
 }
 
+export interface UpdateClassData {
+  id: number
+  name: string
+  description?: string
+  date: string
+  startTime: string
+  endTime: string
+  method: ClassMethod
+  tags: string[]
+  grade: number
+}
+
 export const useClasses = () => {
   const supabase = useSupabaseClient<Database>()
   const loading = ref(false)
@@ -52,6 +64,17 @@ export const useClasses = () => {
     }
   }
 
+  const getClassById = async (id: number) => {
+    const { data, error: err } = await supabase
+      .from('classes')
+      .select('*')
+      .eq('id', id)
+      .single()
+
+    if (err) throw err
+    return data as Class
+  }
+
   const createClass = async (data: CreateClassData) => {
     const { error: err } = await supabase
       .from('classes')
@@ -69,9 +92,39 @@ export const useClasses = () => {
     if (err) throw err
   }
 
+  const updateClass = async (data: UpdateClassData) => {
+    const { error: err } = await supabase
+      .from('classes')
+      .update({
+        name: data.name,
+        description: data.description,
+        date: data.date,
+        start_time: data.startTime,
+        end_time: data.endTime,
+        method: data.method,
+        tags: data.tags,
+        grade: data.grade
+      })
+      .eq('id', data.id)
+
+    if (err) throw err
+  }
+
+  const endClass = async (classId: number) => {
+    const { error: err } = await supabase
+      .from('classes')
+      .update({ is_active: false })
+      .eq('id', classId)
+
+    if (err) throw err
+  }
+
   return {
     getClasses,
+    getClassById,
     createClass,
+    updateClass,
+    endClass,
     loading,
     error
   }

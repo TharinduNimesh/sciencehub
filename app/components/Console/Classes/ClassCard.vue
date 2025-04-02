@@ -27,6 +27,7 @@
             :icon="methodIcon"
             size="sm"
             class="font-medium"
+            variant="soft"
           >
             {{ formatMethodLabel(classItem.method) }}
           </UBadge>
@@ -69,7 +70,7 @@
         <span class="text-xs text-gray-500">
           Created {{ formatDate(classItem.created_at) }}
         </span>
-        <div class="flex items-center gap-2">
+        <div v-if="classItem.is_active" class="flex items-center gap-2">
           <UTooltip text="Edit class details" :popper="{ arrow: true }">
             <UButton
               color="orange"
@@ -80,11 +81,7 @@
               @click="$emit('edit', classItem)"
             />
           </UTooltip>
-          <UTooltip
-            v-if="classItem.is_active"
-            text="Manage students"
-            :popper="{ arrow: true }"
-          >
+          <UTooltip text="Manage students" :popper="{ arrow: true }">
             <UButton
               color="blue"
               variant="soft"
@@ -95,7 +92,7 @@
             />
           </UTooltip>
           <UTooltip
-            v-if="isRecurringClass && classItem.is_active"
+            v-if="isRecurringClass"
             text="Cancel this week"
             :popper="{ arrow: true }"
           >
@@ -115,7 +112,7 @@
               icon="i-heroicons-no-symbol"
               :ui="{ rounded: 'rounded-full' }"
               size="sm"
-              @click="$emit('delete', classItem)"
+              @click="isEndClassDialogOpen = true"
             />
           </UTooltip>
         </div>
@@ -132,6 +129,17 @@
     confirm-text="Yes, Cancel Class"
     cancel-text="No, Keep Class"
     @confirm="handleConfirmCancel"
+  />
+
+  <!-- End Class Confirmation Dialog -->
+  <CommonConfirmationDialog
+    v-model="isEndClassDialogOpen"
+    title="End Class"
+    :description="endClassDialogDescription"
+    type="danger"
+    confirm-text="Yes, End Class"
+    cancel-text="No, Keep Class"
+    @confirm="handleConfirmEnd"
   />
 </template>
 
@@ -176,17 +184,28 @@ const emit = defineEmits<{
   (e: "cancel-week", classItem: ClassItem): void;
 }>();
 
-// Dialog state
-const isCancelDialogOpen = ref(false);
+// Dialog states
+const isCancelDialogOpen = ref(false)
+const isEndClassDialogOpen = ref(false)
+
+const endClassDialogDescription = computed(() => 
+  `Are you sure you want to end the class "${props.classItem.name}"? This action cannot be undone and will permanently deactivate the class. Students will be notified of this change.`
+)
+
 const cancelDialogDescription = computed(() => {
-  const dates = props.classItem.date;
-  return `Are you sure you want to cancel this week's class scheduled for ${dates}? Students will be notified of this cancellation.`;
-});
+  const dates = props.classItem.date
+  return `Are you sure you want to cancel this week's class scheduled for ${dates}? Students will be notified of this cancellation.`
+})
 
 const handleConfirmCancel = () => {
-  emit("cancel-week", props.classItem);
-  isCancelDialogOpen.value = false;
-};
+  emit('cancel-week', props.classItem)
+  isCancelDialogOpen.value = false
+}
+
+const handleConfirmEnd = () => {
+  emit('delete', props.classItem)
+  isEndClassDialogOpen.value = false
+}
 
 const methodColor = computed(() => {
   switch (props.classItem.method) {
@@ -283,30 +302,28 @@ const formatDate = (date: string) => {
 const menuItems = computed(() => {
   const items: DropdownItem[] = [
     {
-      label: "Edit Class",
-      icon: "i-heroicons-pencil-square",
-      click: () => emit("edit", props.classItem),
-    },
-  ];
+      label: 'Edit Class',
+      icon: 'i-heroicons-pencil-square',
+      click: () => emit('edit', props.classItem)
+    }
+  ]
 
   // Add cancel week option only for recurring series classes
-  if (
-    props.classItem.method.endsWith("RecurringSeries") &&
-    props.classItem.is_active
-  ) {
+  if (props.classItem.method.endsWith('RecurringSeries') && props.classItem.is_active) {
     items.push({
-      label: "Cancel this week",
-      icon: "i-heroicons-x-circle",
-      click: () => (isCancelDialogOpen.value = true),
-    });
+      label: 'Cancel this week',
+      icon: 'i-heroicons-x-circle',
+      click: () => isCancelDialogOpen.value = true
+    })
   }
 
   items.push({
-    label: "End Class",
-    icon: "i-heroicons-no-symbol",
-    click: () => emit("delete", props.classItem),
-  });
+    label: 'End Class',
+    icon: 'i-heroicons-no-symbol',
+    class: 'text-red-600 hover:text-red-700',
+    click: () => isEndClassDialogOpen.value = true
+  })
 
-  return [items];
-});
+  return [items]
+})
 </script>

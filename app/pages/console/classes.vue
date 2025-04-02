@@ -135,6 +135,13 @@
       v-model="isCreateModalOpen"
       @created="refreshData"
     />
+
+    <!-- Edit Class Modal -->
+    <ConsoleClassesEditModal
+      v-model="isEditModalOpen"
+      :class-data="selectedClass"
+      @updated="refreshData"
+    />
   </div>
 </template>
 
@@ -153,12 +160,14 @@ definePageMeta({
 // Store & Composables
 const sidebarStore = useSidebarStore()
 const notification = useNotification()
-const { getClasses, loading: isRefreshing } = useClasses()
+const { getClasses, endClass, loading: isRefreshing } = useClasses()
 
 // State
 const isMobile = ref(isMobileScreen())
 const showFilters = ref(false)
 const isCreateModalOpen = ref(false)
+const isEditModalOpen = ref(false)
+const selectedClass = ref<Class | undefined>()
 const page = ref(1)
 const pageSize = 9
 const classes = ref<Class[]>([])
@@ -223,13 +232,19 @@ const handleViewStudents = (classItem: Class) => {
 }
 
 const handleEditClass = (classItem: Class) => {
-  // Implement edit class logic
-  console.log('Editing class:', classItem.name)
+  selectedClass.value = classItem
+  isEditModalOpen.value = true
 }
 
-const handleDeleteClass = (classItem: Class) => {
-  // Implement delete class logic
-  console.log('Deleting class:', classItem.name)
+const handleDeleteClass = async (classItem: Class) => {
+  try {
+    await endClass(classItem.id)
+    notification.showSuccess('Class ended successfully')
+    refreshData()
+  } catch (error) {
+    console.error('Error ending class:', error)
+    notification.showError('Failed to end class')
+  }
 }
 
 const handleCancelWeek = async (classItem: Class) => {
