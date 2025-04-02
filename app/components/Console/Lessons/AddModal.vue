@@ -104,6 +104,7 @@
             <img
               :src="form.thumbnailUrl || defaultThumbnail"
               :alt="form.title"
+              draggable="false"
               class="w-full h-full object-cover"
               @error="handleImageError"
             />
