@@ -119,7 +119,6 @@
               :options="tagOptions"
               multiple
               searchable
-              :create-tag="(tag: string) => ({ label: tag, value: tag })"
               placeholder="Search or add tags"
               icon="i-heroicons-tag"
             />
@@ -172,8 +171,11 @@
 import { ref, computed, watch } from "vue"
 import { useNotification } from "~/composables/useNotification"
 import { createClassSchema, datePatternOptions, type ClassMethod } from '~/schemas/class'
+import { useClasses } from '~/composables/useClasses'
 
-const props = defineProps<{
+const { createClass } = useClasses()
+
+defineProps<{
   modelValue: boolean
 }>()
 
@@ -225,17 +227,17 @@ const classMethodOptions = [
 ]
 
 const tagOptions = [
-  { label: "Mathematics", value: "Mathematics" },
-  { label: "Physics", value: "Physics" },
-  { label: "Chemistry", value: "Chemistry" },
-  { label: "Biology", value: "Biology" },
-  { label: "Grade 10", value: "Grade 10" },
-  { label: "Grade 11", value: "Grade 11" },
-  { label: "Theory", value: "Theory" },
-  { label: "Practical", value: "Practical" },
-  { label: "Revision", value: "Revision" },
-  { label: "Advanced", value: "Advanced" },
-]
+  "Mathematics",
+  "Physics",
+  "Chemistry",
+  "Biology", 
+  "Grade 10",
+  "Grade 11",
+  "Theory",
+  "Practical",
+  "Revision",
+  "Advanced"
+];
 
 const gradeOptions = [
   { label: "Grade 6", value: 6 },
@@ -259,7 +261,17 @@ const classSchema = computed(() => createClassSchema(isRecurringClass.value))
 const handleCreateClass = async () => {
   try {
     isCreating.value = true;
-    // TODO: Implement class creation logic here
+    
+    await createClass({
+      name: state.value.name,
+      description: state.value.description,
+      grade: state.value.grade!,
+      method: state.value.method!,
+      date: state.value.date,
+      startTime: state.value.startTime,
+      endTime: state.value.endTime,
+      tags: state.value.tags
+    });
 
     notification.showSuccess("Class created successfully");
     emit("update:modelValue", false);

@@ -52,7 +52,49 @@
 
       <!-- Classes Grid -->
       <div :class="['grid gap-6', gridClass]">
+        <!-- Loading Skeletons -->
+        <template v-if="isRefreshing">
+          <div v-for="i in 6" :key="i" class="bg-white rounded-xl border border-gray-200 shadow-sm">
+            <div class="p-6 space-y-4">
+              <!-- Header Skeleton -->
+              <div class="flex justify-between items-start gap-4">
+                <div class="space-y-2 flex-1">
+                  <USkeleton class="h-6 w-2/3" />
+                  <USkeleton class="h-4 w-full" />
+                </div>
+                <USkeleton class="h-6 w-16" />
+              </div>
+
+              <!-- Method & Schedule Skeleton -->
+              <div class="space-y-3">
+                <div class="flex items-center justify-between">
+                  <USkeleton class="h-6 w-32" />
+                  <USkeleton class="h-6 w-24" />
+                </div>
+                <div class="flex items-center justify-between">
+                  <USkeleton class="h-5 w-36" />
+                  <USkeleton class="h-5 w-32" />
+                </div>
+              </div>
+
+              <!-- Tags Skeleton -->
+              <div class="flex gap-2">
+                <USkeleton v-for="j in 3" :key="j" class="h-5 w-16" />
+              </div>
+
+              <!-- Actions Skeleton -->
+              <div class="flex items-center justify-between pt-2">
+                <USkeleton class="h-4 w-32" />
+                <div class="flex items-center gap-2">
+                  <USkeleton v-for="j in 4" :key="j" class="h-8 w-8 rounded-full" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </template>
+
         <ConsoleClassesClassCard
+          v-else
           v-for="classItem in paginatedClasses"
           :key="classItem.id"
           :class-item="classItem"
@@ -101,24 +143,7 @@ import { ref, computed, onMounted } from 'vue'
 import { isMobileScreen } from '~/lib/utils'
 import { useSidebarStore } from '~/stores/sidebar'
 import { useNotification } from '~/composables/useNotification'
-
-// Types
-type ClassMethod = 'VirtualRecurringSeries' | 'VirtualSingleSession' | 'InPersonRecurringSeries' | 'InPersonSingleSession'
-
-interface ClassItem {
-  id: number
-  name: string
-  description: string | null
-  date: string
-  start_time: string
-  end_time: string
-  method: ClassMethod
-  is_active: boolean
-  tags: string[]
-  created_at: string
-  student_count: number
-  max_students: number | null
-}
+import { useClasses, type Class, type ClassMethod } from '~/composables/useClasses'
 
 // Page meta
 definePageMeta({
@@ -128,14 +153,15 @@ definePageMeta({
 // Store & Composables
 const sidebarStore = useSidebarStore()
 const notification = useNotification()
+const { getClasses, loading: isRefreshing } = useClasses()
 
 // State
 const isMobile = ref(isMobileScreen())
 const showFilters = ref(false)
-const isRefreshing = ref(false)
 const isCreateModalOpen = ref(false)
 const page = ref(1)
 const pageSize = 9
+const classes = ref<Class[]>([])
 
 // Filter state
 const filters = ref({
@@ -144,66 +170,6 @@ const filters = ref({
   tag: undefined,
   status: undefined
 })
-
-// Dummy data for demonstration
-const classes = ref<ClassItem[]>([
-  {
-    id: 1,
-    name: 'Advanced Mathematics - Grade 11',
-    description: 'Advanced level mathematics covering algebra, calculus, and statistics for Grade 11 students.',
-    date: 'Every Monday, Wednesday',
-    start_time: '16:00:00',
-    end_time: '18:00:00',
-    method: 'VirtualRecurringSeries',
-    is_active: true,
-    tags: ['Mathematics', 'Grade 11', 'Advanced'],
-    created_at: '2025-03-30T14:00:00Z',
-    student_count: 45,
-    max_students: 50
-  },
-  {
-    id: 2,
-    name: 'Biology Practical Workshop',
-    description: 'Hands-on biology practical session covering microscopy and specimen analysis.',
-    date: 'April 15, 2025',
-    start_time: '09:00:00',
-    end_time: '12:00:00',
-    method: 'InPersonSingleSession',
-    is_active: true,
-    tags: ['Biology', 'Grade 10', 'Practical'],
-    created_at: '2025-03-25T08:30:00Z',
-    student_count: 20,
-    max_students: 25
-  },
-  {
-    id: 3,
-    name: 'Physics Theory Class',
-    description: 'Regular physics theory class covering mechanics and dynamics.',
-    date: 'Every Tuesday, Friday',
-    start_time: '14:30:00',
-    end_time: '16:30:00',
-    method: 'InPersonRecurringSeries',
-    is_active: false,
-    tags: ['Physics', 'Grade 11', 'Theory'],
-    created_at: '2025-03-20T11:15:00Z',
-    student_count: 38,
-    max_students: 40
-  },
-  {
-    id: 4,
-    name: 'Chemistry Revision Webinar',
-    description: 'Online revision session for upcoming chemistry examinations.',
-    date: 'April 10, 2025',
-    start_time: '17:00:00',
-    end_time: '19:00:00',
-    method: 'VirtualSingleSession',
-    is_active: true,
-    tags: ['Chemistry', 'Grade 11', 'Revision'],
-    created_at: '2025-04-01T09:00:00Z',
-    student_count: 65,
-    max_students: 100
-  }
-])
 
 // Computed properties
 const filteredClasses = computed(() => {
@@ -242,38 +208,31 @@ const updateFilters = (newFilters: any) => {
 }
 
 const refreshData = async () => {
-  isRefreshing.value = true
   try {
-    // Implement actual data refresh logic here
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    const data = await getClasses()
+    classes.value = data
   } catch (error) {
     console.error('Error refreshing classes:', error)
-  } finally {
-    isRefreshing.value = false
+    notification.showError('Failed to load classes')
   }
 }
 
-const handleStartClass = (classItem: any) => {
-  // Implement start class logic
-  console.log('Starting class:', classItem.name)
-}
-
-const handleViewStudents = (classItem: any) => {
+const handleViewStudents = (classItem: Class) => {
   // Implement view students logic
   console.log('Viewing students for:', classItem.name)
 }
 
-const handleEditClass = (classItem: any) => {
+const handleEditClass = (classItem: Class) => {
   // Implement edit class logic
   console.log('Editing class:', classItem.name)
 }
 
-const handleDeleteClass = (classItem: any) => {
+const handleDeleteClass = (classItem: Class) => {
   // Implement delete class logic
   console.log('Deleting class:', classItem.name)
 }
 
-const handleCancelWeek = async (classItem: ClassItem) => {
+const handleCancelWeek = async (classItem: Class) => {
   try {
     // TODO: Implement actual cancellation logic here
     // await cancelClass(classItem.id)
