@@ -56,7 +56,28 @@
 
       <!-- Lessons List -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-4">
+        <!-- Skeletons during loading -->
+        <template v-if="isLoading">
+          <div v-for="i in 6" :key="`skeleton-${i}`" class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden animate-pulse">
+            <!-- Thumbnail skeleton -->
+            <div class="aspect-video w-full h-48 bg-gray-200"></div>
+            <!-- Content skeleton -->
+            <div class="p-4">
+              <div class="h-5 bg-gray-200 rounded w-3/4 mb-3"></div>
+              <div class="h-4 bg-gray-200 rounded w-full mb-2"></div>
+              <div class="h-4 bg-gray-200 rounded w-2/3"></div>
+              <!-- Footer skeleton -->
+              <div class="flex items-center justify-between mt-4">
+                <div class="h-3 bg-gray-200 rounded w-1/4"></div>
+                <div class="h-5 bg-gray-200 rounded w-1/5"></div>
+              </div>
+            </div>
+          </div>
+        </template>
+        
+        <!-- Actual lessons -->
         <ConsoleLessonsCard
+          v-if="!isLoading"
           v-for="lesson in paginatedLessons"
           :key="lesson.id"
           :lesson="lesson"
@@ -65,21 +86,17 @@
           @edit="handleEditLesson"
           @delete="handleDeleteLesson"
         />
+        
+        <!-- Empty state -->
         <p
           v-if="
-            (paginatedLessons?.length === 0 || !paginatedLessons) && !isLoading
+            !isLoading && (paginatedLessons?.length === 0 || !paginatedLessons)
           "
           class="text-gray-500 col-span-full text-center py-12"
         >
           No lessons found.
           {{ showFilters ? "Try adjusting your filters." : "" }}
         </p>
-        <div v-if="isLoading" class="col-span-full flex justify-center py-12">
-          <UIcon
-            name="i-heroicons-arrow-path"
-            class="w-8 h-8 animate-spin text-gray-400"
-          />
-        </div>
       </div>
 
       <!-- Pagination -->
@@ -293,7 +310,6 @@ const reloadLessons = async () => {
     // Refresh lessons data - in a real app, this would be API data
     // For testing, we'll randomly reorder the sample lessons to simulate refresh
     lessons.value = [...lessons.value].sort(() => Math.random() - 0.5);
-    showSuccess("Lessons reloaded successfully");
   } catch (error) {
     console.error("Failed to load lessons:", error);
     showError("Failed to load lessons");
