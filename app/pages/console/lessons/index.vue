@@ -42,7 +42,7 @@
             icon="i-heroicons-plus"
             :ui="{ rounded: 'rounded-full' }"
             :block="isMobile"
-            @click="isAddModalOpen = true"
+            @click="openAddLessonModal"
           />
         </div>
       </div>
@@ -58,7 +58,11 @@
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-4">
         <!-- Skeletons during loading -->
         <template v-if="isLoading">
-          <div v-for="i in 6" :key="`skeleton-${i}`" class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden animate-pulse">
+          <div
+            v-for="i in 6"
+            :key="`skeleton-${i}`"
+            class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden animate-pulse"
+          >
             <!-- Thumbnail skeleton -->
             <div class="aspect-video w-full h-48 bg-gray-200"></div>
             <!-- Content skeleton -->
@@ -74,7 +78,7 @@
             </div>
           </div>
         </template>
-        
+
         <!-- Actual lessons -->
         <ConsoleLessonsCard
           v-if="!isLoading"
@@ -82,11 +86,12 @@
           :key="lesson.id"
           :lesson="lesson"
           :processing="processingIds.includes(lesson.id)"
-          @view="handleViewLesson"
-          @edit="handleEditLesson"
-          @delete="handleDeleteLesson"
-        />
-        
+          @edit="editLesson"
+          @delete="deleteLesson"
+          @navigate="navigateToLesson"
+        >
+        </ConsoleLessonsCard>
+
         <!-- Empty state -->
         <p
           v-if="
@@ -127,22 +132,12 @@
       </div>
     </div>
 
-    <!-- Add Lesson Modal -->
-    <ConsoleLessonsAddModal v-model="isAddModalOpen" @add="handleAddLesson" />
-
-    <!-- Edit Lesson Modal -->
+    <!-- Lesson Modals -->
     <ConsoleLessonsAddModal
-      v-model="isEditModalOpen"
-      :is-editing="true"
-      :edit-data="selectedLessonForEdit"
-      @add="handleUpdateLesson"
-    />
-
-    <!-- View Lesson Modal -->
-    <ConsoleLessonsViewModal
-      v-model="isViewModalOpen"
-      :lesson="selectedLesson"
-      @edit="handleEditFromView"
+      v-model="showAddModal"
+      :is-editing="isEditing"
+      :edit-data="currentLesson"
+      @add="handleLessonSubmit"
     />
   </div>
 </template>
@@ -150,49 +145,90 @@
 <script setup lang="ts">
 import { isMobileScreen } from "~/lib/utils";
 import { useAuthStore } from "@/stores/auth";
+import { computed, ref, onMounted } from "vue";
+import { storeToRefs } from "pinia";
 
 // Page meta
 definePageMeta({ layout: "console" });
 
-// Composables
+// Composables and stores
+const authStore = useAuthStore();
 const supabase = useSupabaseClient();
 const user = useSupabaseUser();
 const { showSuccess, showError } = useNotification();
-const authStore = useAuthStore();
+const router = useRouter();
+
+// Get user role safely
+const userRole = ref("");
+
+// Set user role safely
+onMounted(() => {
+  try {
+    const role = authStore.getCurrentUserRole?.() || "";
+    userRole.value = role;
+  } catch (error) {
+    console.error("Error getting user role:", error);
+    userRole.value = "";
+  }
+});
 
 // Reactive state
-const isMobile = ref(isMobileScreen());
+const isMobile = ref(false); // Initialize as false, update in onMounted
 const showFilters = ref(false);
-const isAddModalOpen = ref(false);
-const isEditModalOpen = ref(false);
-const isViewModalOpen = ref(false);
 const isLoading = ref(false);
 const processingIds = ref<number[]>([]);
-const selectedLesson = ref<Lesson | null>(null);
-const selectedLessonForEdit = ref<Lesson | null>(null);
 const page = ref(1);
 const pageSize = 9;
 
-// Role-based access
-const userRole = computed(() => authStore.getCurrentUserRole());
+// Modal states
+const showAddModal = ref(false);
+const showViewModal = ref(false);
+const isEditing = ref(false);
+const currentLesson = ref(null);
+
+// Computed permissions based on ref value, not computed property
 const isAdmin = computed(() => userRole.value === "ADMIN");
 const isModerator = computed(() => userRole.value === "MODERATOR");
 
 // Class data (in a real app, would be fetched from API)
 const classes = ref([
-  { id: 1, name: "Class A - Physics (Online)", type: "online", grade: 10, subject: "Physics" },
-  { id: 2, name: "Class B - Chemistry (Physical)", type: "physical", grade: 10, subject: "Chemistry" },
-  { id: 3, name: "Class C - Biology (Online)", type: "online", grade: 9, subject: "Biology" },
-  { id: 4, name: "Class D - Mathematics (Physical)", type: "physical", grade: 11, subject: "Mathematics" }
+  {
+    id: 1,
+    name: "Class A - Physics (Online)",
+    type: "online",
+    grade: 10,
+    subject: "Physics",
+  },
+  {
+    id: 2,
+    name: "Class B - Chemistry (Physical)",
+    type: "physical",
+    grade: 10,
+    subject: "Chemistry",
+  },
+  {
+    id: 3,
+    name: "Class C - Biology (Online)",
+    type: "online",
+    grade: 9,
+    subject: "Biology",
+  },
+  {
+    id: 4,
+    name: "Class D - Mathematics (Physical)",
+    type: "physical",
+    grade: 11,
+    subject: "Mathematics",
+  },
 ]);
 
 // Filters
 const filters = ref({
   search: "",
-  grade: undefined,
-  subject: undefined,
-  dateRange: undefined,
-  classId: undefined,
+  grade: undefined as number | undefined,
+  subject: undefined as string | undefined,
+  dateRange: undefined as "7d" | "30d" | "90d" | undefined,
+  classId: undefined as number | undefined,
 });
 
 // Types
@@ -229,29 +265,30 @@ const lessons = ref<Lesson[]>([
   // ...other lessons with same structure
 ]);
 
-// Mobile responsive handler
-if (import.meta.client) {
-  window.addEventListener("resize", () => (isMobile.value = isMobileScreen()));
-}
-
-// Helper to get class details by id
+// Helper to get class details by id - with null safety
 const getClassById = (classId: number | undefined) => {
   if (!classId) return null;
-  return classes.value.find(c => c.id === classId) || null;
+  return classes.value.find((c) => c.id === classId) || null;
 };
 
 // Computed
 const filteredLessons = computed(() => {
-  if (!lessons.value) return [];
+  if (!lessons.value || !lessons.value.length) return [];
 
   return lessons.value.filter((lesson) => {
+    if (!lesson) return false;
+
     // Search filter
     const matchesSearch =
       !filters.value.search ||
-      lesson.title.toLowerCase().includes(filters.value.search.toLowerCase()) ||
-      lesson.description
-        .toLowerCase()
-        .includes(filters.value.search.toLowerCase());
+      (lesson.title &&
+        lesson.title
+          .toLowerCase()
+          .includes(filters.value.search.toLowerCase())) ||
+      (lesson.description &&
+        lesson.description
+          .toLowerCase()
+          .includes(filters.value.search.toLowerCase()));
 
     // Grade filter
     const matchesGrade =
@@ -260,23 +297,25 @@ const filteredLessons = computed(() => {
     // Subject filter
     const matchesSubject =
       !filters.value.subject || lesson.subject === filters.value.subject;
-      
+
     // Class filter
-    const matchesClass = 
+    const matchesClass =
       !filters.value.classId || lesson.classId === filters.value.classId;
 
     // Date range filter
-    if (!matchesSearch || !matchesGrade || !matchesSubject || !matchesClass) return false;
+    if (!matchesSearch || !matchesGrade || !matchesSubject || !matchesClass)
+      return false;
 
     if (filters.value.dateRange) {
       const lessonDate = new Date(lesson.createdAt).getTime();
       const now = new Date().getTime();
-      const timeRanges = {
+      const timeRanges: Record<string, number> = {
         "7d": 7 * 24 * 60 * 60 * 1000,
         "30d": 30 * 24 * 60 * 60 * 1000,
         "90d": 90 * 24 * 60 * 60 * 1000,
       };
-      return now - lessonDate <= timeRanges[filters.value.dateRange];
+      const range = timeRanges[filters.value.dateRange];
+      return range ? now - lessonDate <= range : true;
     }
 
     return true;
@@ -284,7 +323,7 @@ const filteredLessons = computed(() => {
 });
 
 const paginatedLessons = computed(() => {
-  if (!filteredLessons.value) return [];
+  if (!filteredLessons.value || !filteredLessons.value.length) return [];
   return filteredLessons.value.slice(
     (page.value - 1) * pageSize,
     page.value * pageSize
@@ -318,123 +357,96 @@ const reloadLessons = async () => {
   }
 };
 
-const handleViewLesson = (lesson: Lesson) => {
-  selectedLesson.value = lesson;
-  isViewModalOpen.value = true;
-};
-
-const handleEditLesson = (lesson: Lesson) => {
-  selectedLessonForEdit.value = { ...lesson }; // Create a copy to avoid reference issues
-  isEditModalOpen.value = true;
-};
-
-const handleEditFromView = () => {
-  // Handle edit request from view modal
-  if (selectedLesson.value) {
-    isViewModalOpen.value = false;
-    setTimeout(() => {
-      selectedLessonForEdit.value = { ...selectedLesson.value };
-      isEditModalOpen.value = true;
-    }, 300); // Small delay for better UX
-  }
-};
-
-const handleUpdateLesson = async (updatedLessonData: Partial<Lesson>) => {
-  if (!updatedLessonData.id) return;
-
-  try {
-    await handleAction(updatedLessonData.id, async () => {
-      // Get class details for grade and subject
-      const classInfo = getClassById(updatedLessonData.classId as number);
-      
-      // Mock updating a lesson
-      const index = lessons.value.findIndex(
-        (l) => l.id === updatedLessonData.id
-      );
-      if (index !== -1) {
-        // Merge old lesson with updates and class information
-        const updatedLesson: Lesson = {
-          ...lessons.value[index],
-          ...updatedLessonData,
-          // If class was selected, update grade and subject from class info
-          ...(classInfo ? {
-            grade: classInfo.grade,
-            subject: classInfo.subject
-          } : {}),
-          updatedAt: new Date().toISOString(),
-        };
-
-        lessons.value[index] = updatedLesson;
-
-        // Also update the view modal if it's showing this lesson
-        if (
-          selectedLesson.value &&
-          selectedLesson.value.id === updatedLesson.id
-        ) {
-          selectedLesson.value = { ...updatedLesson };
-        }
-
-        showSuccess("Lesson updated successfully");
-      }
-    });
-  } catch (error) {
-    console.error("Failed to update lesson:", error);
-    showError("Failed to update lesson");
-  }
-};
-
-const handleAddLesson = async (lessonData: Partial<Lesson>) => {
-  try {
-    isLoading.value = true;
-    
-    // Get class details for grade and subject
-    const classInfo = getClassById(lessonData.classId as number);
-    if (!classInfo) {
-      showError("Invalid class selected");
-      return;
-    }
-    
-    // Mock adding a lesson
-    const newLesson: Lesson = {
-      id: Math.max(0, ...lessons.value.map((l) => l.id)) + 1,
-      title: lessonData.title || "New Lesson",
-      description: lessonData.description || "",
-      thumbnailUrl: lessonData.thumbnailUrl || "https://placehold.co/800x450?text=No+Thumbnail",
-      videoUrl: lessonData.videoUrl || "https://www.youtube.com/watch?v=example",
-      classId: lessonData.classId,
-      grade: classInfo.grade,
-      subject: classInfo.subject,
-      duration: lessonData.duration || 30,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    lessons.value.unshift(newLesson);
-    showSuccess("Lesson added successfully");
-  } catch (error) {
-    console.error("Failed to add lesson:", error);
-    showError("Failed to add lesson");
-  } finally {
-    isLoading.value = false;
-  }
-};
-
-const handleDeleteLesson = async (lesson: Lesson) => {
-  await handleAction(lesson.id, async () => {
-    // Mock deletion
-    lessons.value = lessons.value.filter((l) => l.id !== lesson.id);
-    showSuccess("Lesson deleted successfully");
-  });
-};
-
-const updateFilters = (newFilters: any) => {
+const updateFilters = (newFilters: Partial<typeof filters.value>) => {
   Object.assign(filters.value, newFilters);
   // Reset to first page when filters change
   page.value = 1;
 };
 
-// Initialize
-onMounted(async () => {
-  await reloadLessons();
+// Modal methods
+const openAddLessonModal = () => {
+  isEditing.value = false;
+  currentLesson.value = null;
+  showAddModal.value = true;
+};
+
+const editLesson = (lesson) => {
+  currentLesson.value = lesson;
+  isEditing.value = true;
+  showAddModal.value = true;
+  showViewModal.value = false; // Close view modal if it's open
+};
+
+const deleteLesson = async (lesson) => {
+  // In a real app, this would call an API to delete the lesson
+  if (confirm(`Are you sure you want to delete "${lesson.title}"?`)) {
+    await handleAction(lesson.id, async () => {
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      lessons.value = lessons.value.filter((l) => l.id !== lesson.id);
+      showSuccess("Lesson deleted successfully");
+    });
+  }
+};
+
+const handleLessonSubmit = async (lessonData) => {
+  if (isEditing.value && lessonData.id) {
+    // Update existing lesson
+    await handleAction(lessonData.id, async () => {
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      const index = lessons.value.findIndex((l) => l.id === lessonData.id);
+      if (index !== -1) {
+        lessons.value[index] = {
+          ...lessons.value[index],
+          ...lessonData,
+          updatedAt: new Date().toISOString(),
+        };
+      }
+
+      showSuccess("Lesson updated successfully");
+    });
+  } else {
+    // Create new lesson
+    await handleAction(-1, async () => {
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      // Generate new ID
+      const newId = Math.max(...lessons.value.map((l) => l.id), 0) + 1;
+
+      // Get class details safely
+      const classDetails = getClassById(lessonData.classId);
+
+      // Add new lesson
+      lessons.value.unshift({
+        id: newId,
+        ...lessonData,
+        grade: classDetails?.grade || 10,
+        subject: classDetails?.subject || "General Science",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+
+      showSuccess("Lesson created successfully");
+    });
+  }
+};
+
+onMounted(() => {
+  // Check if we're on client-side before accessing window
+  if (import.meta.client) {
+    // Set initial value
+    isMobile.value = isMobileScreen();
+
+    // Add resize listener
+    window.addEventListener("resize", () => {
+      isMobile.value = isMobileScreen();
+    });
+  }
+
+  // Load lessons data
+  reloadLessons();
 });
 </script>

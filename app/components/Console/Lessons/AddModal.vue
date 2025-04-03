@@ -210,20 +210,20 @@ watch(
 );
 
 // Debounce function for URL input
-const debounce = (fn, delay) => {
-  let timeoutId;
-  return function(...args) {
+const debounce = (fn: Function, delay: number) => {
+  let timeoutId: number;
+  return function(...args: any[]) {
     if (timeoutId) {
       clearTimeout(timeoutId);
     }
     timeoutId = setTimeout(() => {
       fn.apply(this, args);
-    }, delay);
+    }, delay) as unknown as number;
   };
 };
 
 // Initialize YouTube iframe API
-let YT;
+let YT: any;
 onMounted(() => {
   if (import.meta.client && !window.YT) {
     // Add YouTube iframe API script
@@ -273,30 +273,6 @@ const handleVideoUrlChange = debounce(async (url: string) => {
     isLoadingVideoData.value = false;
   }
 }, 500);
-
-// Fetch YouTube video metadata using OEmbed API (no API key required)
-async function fetchYoutubeMetadata(videoUrl: string) {
-  try {
-    // Use OEmbed API for title (no API key required)
-    const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(videoUrl)}&format=json`;
-    
-    const response = await fetch(oembedUrl);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch OEmbed data: ${response.status} ${response.statusText}`);
-    }
-    
-    const data = await response.json();
-    
-    return {
-      title: data.title,
-      // OEmbed doesn't provide duration, so we don't set it here
-      // The application will use a default duration
-    };
-  } catch (error) {
-    console.error('Error fetching YouTube metadata:', error);
-    return null;
-  }
-}
 
 // Check if URL is a YouTube link
 const isYoutubeUrl = (url: string): boolean => {
