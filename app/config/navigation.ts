@@ -62,6 +62,13 @@ export const allRoutes: NavigationItem[] = [
     showInSidebar: true
   },
   {
+    title: 'Lesson Details',
+    href: '/console/lessons/[id]',
+    icon: 'i-heroicons-academic-cap',
+    access: ['ADMIN', 'MODERATOR', 'STUDENT'],
+    showInSidebar: false
+  },
+  {
     title: 'Quizzes',
     href: '/console/quizzes',
     icon: 'i-heroicons-clipboard-document-list',
@@ -132,24 +139,24 @@ export const navSections: NavigationSection[] = [
   {
     title: "Core",
     access: ['ADMIN', 'MODERATOR', 'STUDENT'],
-    items: allRoutes.filter(route => 
-      route.showInSidebar && 
+    items: allRoutes.filter(route =>
+      route.showInSidebar &&
       ['dashboard', 'join-requests', 'resources-hub'].some(path => route.href.includes(path))
     )
   },
   {
     title: "Academic",
     access: ['ADMIN', 'MODERATOR', 'STUDENT'],
-    items: allRoutes.filter(route => 
-      route.showInSidebar && 
+    items: allRoutes.filter(route =>
+      route.showInSidebar &&
       ['classes', 'attendance', 'lessons', 'quizzes'].some(path => route.href.includes(path))
     )
   },
   {
     title: "Administration",
     access: ['ADMIN', 'MODERATOR'],
-    items: allRoutes.filter(route => 
-      route.showInSidebar && 
+    items: allRoutes.filter(route =>
+      route.showInSidebar &&
       ['students', 'moderators', 'fees', 'products'].some(path => route.href.includes(path))
     )
   }
