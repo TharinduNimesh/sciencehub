@@ -39,6 +39,28 @@ export interface UpdateClassData {
   grade: number
 }
 
+export interface ClassSession {
+  id: number
+  date: string
+  start_time: string
+  end_time: string
+  is_cancelled: boolean
+  class_id: number
+  created_at: string
+}
+
+export interface TimeTableEntry {
+  id: number
+  class_id: number
+  name: string
+  description: string | null
+  date: string
+  start_time: string
+  end_time: string
+  is_cancelled: boolean
+  method: ClassMethod
+}
+
 export const useClasses = () => {
   const supabase = useSupabaseClient<Database>()
   const loading = ref(false)
@@ -119,6 +141,134 @@ export const useClasses = () => {
     if (err) throw err
   }
 
+  const getNextDate = (pattern: string): string | null => {
+    try {
+      // Get current date in local timezone and set to midnight
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      
+      // Map weekday patterns to their day numbers (0 = Sunday, 6 = Saturday)
+      const weekdayMap: Record<string, number> = {
+        'SUN': 0,
+        'MON': 1,
+        'TUE': 2,
+        'WED': 3,
+        'THU': 4,
+        'FRI': 5,
+        'SAT': 6
+      }
+      
+      const targetDay = weekdayMap[pattern]
+      if (targetDay === undefined) return null
+      
+      // Create a new date object in local timezone
+      const result = new Date(today)
+      const currentDay = today.getDay()
+      
+      // Calculate days until next occurrence
+      let daysUntilNext = targetDay - currentDay
+      if (daysUntilNext <= 0) {
+        // If target day is today or already passed this week, move to next week
+        daysUntilNext += 7
+      }
+      
+      // Add the calculated days to get the next class date
+      result.setDate(result.getDate() + daysUntilNext)
+      
+      // Format the date in YYYY-MM-DD format using local timezone
+      const year = result.getFullYear()
+      const month = String(result.getMonth() + 1).padStart(2, '0')
+      const day = String(result.getDate()).padStart(2, '0')
+      return `${year}-${month}-${day}`
+      
+    } catch (error) {
+      console.error('Error calculating next class date:', error)
+      return null
+    }
+  }
+
+  const getNextSession = async (classId: number, pattern: string) => {
+    const nextDate = getNextDate(pattern)
+    if (!nextDate) return null
+
+    // Check if there's already a session for this date
+    const { data: existingSession } = await supabase
+      .from('class_sessions')
+      .select('*')
+      .eq('class_id', classId)
+      .eq('date', nextDate)
+      .single()
+
+    return existingSession
+  }
+
+  const cancelNextSession = async (classId: number, pattern: string) => {
+    try {
+      const dateToCancel = getNextDate(pattern)
+      if (!dateToCancel) throw new Error('Invalid day pattern')
+
+      const { data, error: err } = await supabase
+        .rpc('cancel_class', {
+          class_id_input: classId,
+          date_input: dateToCancel
+        })
+
+      if (err) throw err
+      return data
+    } catch (error) {
+      console.error('Error cancelling class:', error)
+      throw error
+    }
+  }
+
+  const getTimeTable = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('time_table')
+        .select('*')
+        .gte('date', new Date().toISOString().split('T')[0]) // Only future sessions
+        .order('date', { ascending: true })
+
+      if (error) throw error
+      return data as TimeTableEntry[]
+    } catch (error) {
+      console.error('Error fetching timetable:', error)
+      throw error
+    }
+  }
+
+  const cancelClassByDate = async (classId: number, date: string) => {
+    try {
+      const { data, error: err } = await supabase
+        .rpc('cancel_class', {
+          class_id_input: classId,
+          date_input: date
+        })
+
+      if (err) throw err
+      return data
+    } catch (error) {
+      console.error('Error cancelling class:', error)
+      throw error
+    }
+  }
+
+  const rescheduleClassByDate = async (classId: number, date: string) => {
+    try {
+      const { data, error: err } = await supabase
+        .rpc('reschedule_class', {
+          class_id_input: classId,
+          date_input: date
+        })
+
+      if (err) throw err
+      return data
+    } catch (error) {
+      console.error('Error rescheduling class:', error)
+      throw error
+    }
+  }
+
   return {
     getClasses,
     getClassById,
@@ -126,6 +276,11 @@ export const useClasses = () => {
     updateClass,
     endClass,
     loading,
-    error
+    error,
+    getNextSession,
+    cancelNextSession,
+    getTimeTable,
+    cancelClassByDate,
+    rescheduleClassByDate
   }
 }
