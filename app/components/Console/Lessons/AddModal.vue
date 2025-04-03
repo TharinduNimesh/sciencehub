@@ -1,7 +1,7 @@
 <template>
   <USlideover
     :model-value="modelValue"
-    @update:model-value="$emit('update:modelValue', $event)"
+    @update:model-value="$emit('update:model-value', $event)"
     :ui="{
       width: 'sm:max-w-lg',
       overlay: { background: 'bg-gray-950/50' },
@@ -31,7 +31,7 @@
           variant="ghost"
           icon="i-heroicons-x-mark-20-solid"
           class="flex-none"
-          @click="$emit('update:modelValue', false)"
+          @click="$emit('update:model-value', false)"
         />
       </div>
     </div>
@@ -123,7 +123,7 @@
           color="gray"
           variant="ghost"
           label="Cancel"
-          @click="$emit('update:modelValue', false)"
+          @click="$emit('update:model-value', false)"
         />
         <UButton
           color="primary"
@@ -139,10 +139,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from "vue";
+import { ref, computed, watch } from "vue";
 
 // Define default thumbnail for consistency across the app
-const defaultThumbnail = ref("https://placehold.co/800x450?text=No+Thumbnail");
+const defaultThumbnail = "https://placehold.co/800x450?text=No+Thumbnail";
 
 const props = defineProps({
   modelValue: {
@@ -159,7 +159,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['update:modelValue', 'add']);
+const emit = defineEmits(['update:model-value', 'add']);
 
 const isSubmitting = ref(false);
 const isLoadingVideoData = ref(false);
@@ -221,18 +221,6 @@ const debounce = (fn: Function, delay: number) => {
     }, delay) as unknown as number;
   };
 };
-
-// Initialize YouTube iframe API
-let YT: any;
-onMounted(() => {
-  if (import.meta.client && !window.YT) {
-    // Add YouTube iframe API script
-    const tag = document.createElement('script');
-    tag.src = "https://www.youtube.com/iframe_api";
-    const firstScriptTag = document.getElementsByTagName('script')[0];
-    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-  }
-});
 
 // Handle video URL changes to automatically update thumbnail, title and duration
 const handleVideoUrlChange = debounce(async (url: string) => {
@@ -300,11 +288,11 @@ function extractYoutubeVideoId(url: string): string {
 
 // Get YouTube thumbnail URL from video URL
 function getYoutubeThumbnail(url: string): string {
-  if (!url) return defaultThumbnail.value;
-  if (!isYoutubeUrl(url)) return defaultThumbnail.value;
+  if (!url) return defaultThumbnail;
+  if (!isYoutubeUrl(url)) return defaultThumbnail;
   
   const videoId = extractYoutubeVideoId(url);
-  if (!videoId) return defaultThumbnail.value;
+  if (!videoId) return defaultThumbnail;
   
   // Return YouTube thumbnail URL (high quality)
   return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
@@ -313,7 +301,7 @@ function getYoutubeThumbnail(url: string): string {
 const handleImageError = (event: Event) => {
   // Set a fallback image if the provided URL fails to load
   const target = event.target as HTMLImageElement;
-  target.src = defaultThumbnail.value;
+  target.src = defaultThumbnail;
 };
 
 const handleSubmit = async () => {
@@ -343,16 +331,17 @@ const handleSubmit = async () => {
       form.value.thumbnailUrl = getYoutubeThumbnail(form.value.videoUrl);
     }
 
-    // Preserve ID when editing
+    // Prepare form data
     const formData = {
       ...form.value,
-      id: props.isEditing && props.editData ? props.editData.id : undefined
+      // Get class name from the selected class ID for display purposes
+      className: classOptions.value.find(c => c.id === form.value.classId)?.name || '',
     };
 
     emit("add", formData);
 
     // Close modal
-    emit("update:modelValue", false);
+    emit("update:model-value", false);
   } catch (error) {
     console.error("Error with lesson:", error);
     useToast().add({

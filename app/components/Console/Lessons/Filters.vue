@@ -147,6 +147,7 @@ const subjectOptions: Option[] = [
   { label: 'Biology', value: 'Biology' },
   { label: 'Chemistry', value: 'Chemistry' },
   { label: 'Physics', value: 'Physics' },
+  { label: 'Mathematics', value: 'Mathematics' },
   { label: 'General Science', value: 'General Science' },
 ]
 
