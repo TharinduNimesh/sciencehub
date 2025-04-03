@@ -36,6 +36,7 @@
             </div>
           </div>
           <UButton
+            v-if="isAdmin()"
             label="Create Class"
             color="primary"
             icon="i-heroicons-plus"
@@ -56,7 +57,8 @@
 
       <!-- Tabs -->
       <UTabs
-        v-model="activeTab"
+        v-if="!isStudent()"
+        v-model="selectedTabIndex"
         :items="tabItems"
         :ui="{
           wrapper: 'mt-6',
@@ -64,92 +66,90 @@
             base: 'mb-6',
           },
         }"
-      >
-        <template #item="{ item }">
+      />
+
+      <!-- Content Section -->
+      <div class="grid grid-cols-1 gap-6" :class="[
+        currentViewMode === 'summary' ? gridClass : '',
+        currentViewMode === 'summary' ? 'auto-rows-fr' : ''
+      ]">
+        <!-- Loading Skeletons -->
+        <template v-if="isRefreshing">
           <div
-            :class="[
-              item.key === 'timetable'
-                ? 'space-y-4'
-                : ['grid gap-6', gridClass],
-            ]"
+            v-for="i in 6"
+            :key="i"
+            class="bg-white rounded-xl border border-gray-200 shadow-sm"
           >
-            <!-- Loading Skeletons -->
-            <template v-if="isRefreshing">
-              <div
-                v-for="i in 6"
-                :key="i"
-                class="bg-white rounded-xl border border-gray-200 shadow-sm"
-              >
-                <div class="p-6 space-y-4">
-                  <!-- Header Skeleton -->
-                  <div class="flex justify-between items-start gap-4">
-                    <div class="space-y-2 flex-1">
-                      <USkeleton class="h-6 w-2/3" />
-                      <USkeleton class="h-4 w-full" />
-                    </div>
-                    <USkeleton class="h-6 w-16" />
-                  </div>
+            <div class="p-6 space-y-4">
+              <!-- Header Skeleton -->
+              <div class="flex justify-between items-start gap-4">
+                <div class="space-y-2 flex-1">
+                  <USkeleton class="h-6 w-2/3" />
+                  <USkeleton class="h-4 w-full" />
+                </div>
+                <USkeleton class="h-6 w-16" />
+              </div>
 
-                  <!-- Method & Schedule Skeleton -->
-                  <div class="space-y-3">
-                    <div class="flex items-center justify-between">
-                      <USkeleton class="h-6 w-32" />
-                      <USkeleton class="h-6 w-24" />
-                    </div>
-                    <div class="flex items-center justify-between">
-                      <USkeleton class="h-5 w-36" />
-                      <USkeleton class="h-5 w-32" />
-                    </div>
-                  </div>
-
-                  <!-- Tags Skeleton -->
-                  <div class="flex gap-2">
-                    <USkeleton v-for="j in 3" :key="j" class="h-5 w-16" />
-                  </div>
-
-                  <!-- Actions Skeleton -->
-                  <div class="flex items-center justify-between pt-2">
-                    <USkeleton class="h-4 w-32" />
-                    <div class="flex items-center gap-2">
-                      <USkeleton
-                        v-for="j in 4"
-                        :key="j"
-                        class="h-8 w-8 rounded-full"
-                      />
-                    </div>
-                  </div>
+              <!-- Method & Schedule Skeleton -->
+              <div class="space-y-3">
+                <div class="flex items-center justify-between">
+                  <USkeleton class="h-6 w-32" />
+                  <USkeleton class="h-6 w-24" />
+                </div>
+                <div class="flex items-center justify-between">
+                  <USkeleton class="h-5 w-36" />
+                  <USkeleton class="h-5 w-32" />
                 </div>
               </div>
-            </template>
 
-            <template v-else-if="item.key === 'timetable'">
-              <!-- Timetable view -->
-              <ConsoleClassesTimeTableCard
-                v-for="entry in paginatedTimetableEntries"
-                :key="entry.id"
-                :entry="entry"
-                @cancel="handleCancelSession(entry)"
-                @reschedule="handleRescheduleSession(entry)"
-                @refresh="refreshData"
-              />
-            </template>
+              <!-- Tags Skeleton -->
+              <div class="flex gap-2">
+                <USkeleton v-for="j in 3" :key="j" class="h-5 w-16" />
+              </div>
 
-            <template v-else>
-              <!-- Summary view -->
-              <ConsoleClassesClassCard
-                v-for="classItem in paginatedClasses"
-                :key="classItem.id"
-                :class-item="classItem"
-                :view-mode="item.key"
-                @view-students="handleViewStudents"
-                @edit="handleEditClass"
-                @delete="handleDeleteClass"
-                @cancel-week="handleCancelWeek"
-              />
-            </template>
+              <!-- Actions Skeleton -->
+              <div class="flex items-center justify-between pt-2">
+                <USkeleton class="h-4 w-32" />
+                <div class="flex items-center gap-2">
+                  <USkeleton
+                    v-for="j in 4"
+                    :key="j"
+                    class="h-8 w-8 rounded-full"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         </template>
-      </UTabs>
+
+        <template v-else>
+          <!-- Timetable View -->
+          <template v-if="currentViewMode === 'timetable'">
+            <ConsoleClassesTimeTableCard
+              v-for="entry in paginatedTimetableEntries"
+              :key="entry.id"
+              :entry="entry"
+              @cancel="handleCancelSession(entry)"
+              @reschedule="handleRescheduleSession(entry)"
+              @refresh="refreshData"
+            />
+          </template>
+
+          <!-- Summary View -->
+          <template v-else>
+            <ConsoleClassesClassCard
+              v-for="classItem in paginatedClasses"
+              :key="classItem.id"
+              :class-item="classItem"
+              view-mode="summary"
+              @view-students="handleViewStudents"
+              @edit="handleEditClass"
+              @delete="handleDeleteClass"
+              @cancel-week="handleCancelWeek"
+            />
+          </template>
+        </template>
+      </div>
 
       <!-- Pagination -->
       <div class="flex justify-between items-center pt-4">
@@ -225,6 +225,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from "vue";
+import { useRoute, useRouter } from "#app";
 import { isMobileScreen } from "~/lib/utils";
 import { useSidebarStore } from "~/stores/sidebar";
 import { useNotification } from "~/composables/useNotification";
@@ -275,8 +276,10 @@ const filters = ref({
   status: undefined,
 });
 
-// Tab state
-const activeTab = ref(0);
+const route = useRoute();
+const router = useRouter();
+
+// Modified tab state
 const tabItems = [
   {
     key: "timetable",
@@ -290,19 +293,39 @@ const tabItems = [
   },
 ];
 
-// Computed to get current view mode
-const currentViewMode = computed(
-  () => tabItems[activeTab.value]?.key ?? "timetable"
-);
+// Computed for tab index based on route query
+const selectedTabIndex = computed({
+  get() {
+    const tab = route.query.tab as string;
+    const index = tabItems.findIndex(item => item.key === tab);
+    return index === -1 ? 0 : index;
+  },
+  set(value: number) {
+    router.replace({ 
+      query: { 
+        ...route.query, 
+        tab: tabItems[value]?.key ?? 'timetable'
+      }
+    });
+  }
+});
 
-// Watch for tab changes
+// Computed to get current view mode
+const currentViewMode = computed(() => {
+  // Always return 'timetable' for students
+  if (isStudent()) {
+    return 'timetable';
+  }
+  // For others, return based on selected tab
+  return tabItems[selectedTabIndex.value]?.key ?? 'timetable';
+});
+
+// Watch for tab changes through route
 watch(
-  () => activeTab.value,
-  (newTab) => {
+  () => route.query.tab,
+  () => {
     // Reset page when switching views
-    if (currentViewMode.value === "summary") {
-      page.value = 1;
-    }
+    page.value = 1;
   }
 );
 
@@ -518,12 +541,12 @@ const handleRescheduleSession = (session: TimeTableEntry) => {
 
 const handleRestoreConfirm = async () => {
   if (!selectedSession.value) return;
-  
+
   try {
     const { error } = await supabase
       .from("class_sessions")
       .update({
-        is_cancelled: false
+        is_cancelled: false,
       })
       .eq("id", selectedSession.value.id);
 

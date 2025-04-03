@@ -1,6 +1,6 @@
 <template>
   <div
-    class="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200"
+    class="h-full bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200"
   >
     <div class="p-6 space-y-4">
       <!-- Header Section -->

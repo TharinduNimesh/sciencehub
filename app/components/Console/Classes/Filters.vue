@@ -1,7 +1,11 @@
 <template>
   <div class="bg-white p-4 rounded-lg border border-gray-200 mb-6">
     <div class="flex flex-col space-y-4">
-      <div class="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+      <div :class="{
+        'grid gap-4': true,
+        'grid-cols-1 sm:grid-cols-3 lg:grid-cols-4': isAdmin(),
+        'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3': !isAdmin()
+      }">
         <UInput
           v-model="localFilters.search"
           placeholder="Search by class name"
@@ -27,6 +31,7 @@
         />
 
         <USelectMenu
+          v-if="isAdmin()"
           v-model="localFilters.status"
           :options="statusOptions"
           placeholder="Filter by status"
