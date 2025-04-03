@@ -63,6 +63,9 @@ export default defineNuxtConfig({
   },
 
   runtimeConfig: {
+    public: {
+      isInMaintenanceMode: process.env.MAINTENANCE_MODE === "true",
+    },
     supabase: {
       serviceKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
     },

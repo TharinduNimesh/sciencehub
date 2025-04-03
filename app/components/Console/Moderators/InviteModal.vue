@@ -109,12 +109,27 @@ const form = ref<{
   expiresIn: 7
 })
 
-const classOptions = [
-  { label: 'Grade 11 - Revision', value: { id: 1, name: 'Grade 11 - Revision' } },
-  { label: 'Grade 11 - Theory', value: { id: 2, name: 'Grade 11 - Theory' } },
-  { label: 'Grade 10 - Revision', value: { id: 3, name: 'Grade 10 - Revision' } },
-  { label: 'Grade 10 - Theory', value: { id: 4, name: 'Grade 10 - Theory' } }
-]
+// Use the classes composable
+const { getClasses, loading } = useClasses()
+const classes = ref<Array<{ id: number; name: string }>>([])
+
+// Load classes when component is mounted
+onMounted(async () => {
+  try {
+    const loadedClasses = await getClasses()
+    classes.value = loadedClasses.map(c => ({ id: c.id, name: c.name }))
+  } catch (error) {
+    console.error('Failed to load classes:', error)
+  }
+})
+
+// Transform classes into options format for USelectMenu
+const classOptions = computed(() => 
+  classes.value.map(c => ({
+    label: c.name,
+    value: { id: c.id, name: c.name }
+  }))
+)
 
 const expiryOptions = [
   { label: '24 Hours', value: 1 },
