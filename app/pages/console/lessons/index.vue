@@ -191,7 +191,7 @@ interface Lesson {
   duration: number;
   classId: number;
   className: string;
-  thumbnailUrl: string;
+  thumbnailUrl?: string;
   videoUrl: string;
   createdAt: string;
 }
@@ -280,9 +280,9 @@ const refreshData = async () => {
           duration: 45,
           classId: 2,
           className: "Chemistry Class B",
-          thumbnailUrl: "https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg",
+          thumbnailUrl: undefined, // Testing undefined thumbnail
           videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-          createdAt: "2023-09-15T10:30:00",
+          createdAt: "2025-02-15T10:30:00",
         },
         {
           id: 2,
@@ -292,9 +292,9 @@ const refreshData = async () => {
           duration: 60,
           classId: 1,
           className: "Physics Class A",
-          thumbnailUrl: "https://img.youtube.com/vi/L-Wtlv6E7zs/hqdefault.jpg",
+          thumbnailUrl: "https://invalid-image-url.jpg", // Testing invalid thumbnail
           videoUrl: "https://www.youtube.com/watch?v=L-Wtlv6E7zs",
-          createdAt: "2023-09-22T14:00:00",
+          createdAt: "2025-02-22T14:00:00",
         },
         {
           id: 3,
@@ -303,9 +303,9 @@ const refreshData = async () => {
           duration: 55,
           classId: 3,
           className: "Biology Class C",
-          thumbnailUrl: "https://img.youtube.com/vi/8IlzKri08kk/hqdefault.jpg",
+          thumbnailUrl: "/images/sample-thumbnail.webp",
           videoUrl: "https://www.youtube.com/watch?v=8IlzKri08kk",
-          createdAt: "2023-10-01T09:15:00",
+          createdAt: "2025-04-01T09:15:00",
         },
       ];
       loading.value = false;

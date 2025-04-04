@@ -51,6 +51,7 @@
       <ConsoleClassesFilters
         v-show="showFilters"
         :filters="filters"
+        :view-mode="currentViewMode"
         @update:filters="updateFilters"
         class="transition-all duration-200 ease-in-out"
       />
@@ -274,6 +275,8 @@ const filters = ref({
   method: undefined as ClassMethod | undefined,
   tag: undefined,
   status: undefined,
+  selectedDate: undefined as Date | undefined,
+  selectedDays: [] as string[],
 });
 
 const route = useRoute();
@@ -314,10 +317,10 @@ const selectedTabIndex = computed({
 const currentViewMode = computed(() => {
   // Always return 'timetable' for students
   if (isStudent()) {
-    return 'timetable';
+    return 'timetable' as const;
   }
   // For others, return based on selected tab
-  return tabItems[selectedTabIndex.value]?.key ?? 'timetable';
+  return (tabItems[selectedTabIndex.value]?.key ?? 'timetable') as 'timetable' | 'summary';
 });
 
 // Watch for tab changes through route
@@ -406,23 +409,53 @@ const currentMonthClasses = computed(() => {
 });
 
 // Add new computed property for filtered timetable entries
+const dayNames = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'] as const;
+type DayName = (typeof dayNames)[number];
+
+// Add helper function for date validation
+const isValidDate = (date: any): date is Date => {
+  return date instanceof Date && !isNaN(date.getTime());
+};
+
 const filteredTimetableEntries = computed(() => {
+  // Cache the selected date to avoid multiple normalizations
+  let selectedDate = filters.value.selectedDate
+  if (selectedDate) {
+    selectedDate = new Date(selectedDate)
+    selectedDate.setHours(0, 0, 0, 0)
+  }
+
   return timetableEntries.value.filter((entry) => {
+    // Create dates and normalize to midnight UTC
+    const entryDate = new Date(entry.date)
+    entryDate.setHours(0, 0, 0, 0)
+
+    // Text search filter
     const matchesSearch =
       !filters.value.search ||
       entry.name.toLowerCase().includes(filters.value.search.toLowerCase()) ||
-      entry.description
-        ?.toLowerCase()
-        .includes(filters.value.search.toLowerCase());
+      entry.description?.toLowerCase().includes(filters.value.search.toLowerCase())
 
-    // Filter by status if specified
+    // Status filter
     const matchesStatus =
       filters.value.status === undefined ||
       (filters.value.status === true && !entry.is_cancelled) ||
-      (filters.value.status === false && entry.is_cancelled);
+      (filters.value.status === false && entry.is_cancelled)
 
-    return matchesSearch && matchesStatus;
-  });
+    // Date filter - compare dates after ensuring they're properly normalized
+    const matchesDate = !selectedDate || 
+      (entryDate.getFullYear() === selectedDate.getFullYear() &&
+       entryDate.getMonth() === selectedDate.getMonth() &&
+       entryDate.getDate() === selectedDate.getDate())
+
+    // Days filter
+    const dayIndex = entryDate.getDay()
+    const dayName = dayNames[dayIndex] as DayName
+    const selectedDays = filters.value.selectedDays ?? []
+    const matchesDays = selectedDays.length === 0 || selectedDays.includes(dayName)
+
+    return matchesSearch && matchesStatus && matchesDate && matchesDays
+  })
 });
 
 // Add new computed for paginated timetable entries

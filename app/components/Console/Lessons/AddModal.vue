@@ -3,7 +3,7 @@
     :model-value="modelValue"
     @update:model-value="$emit('update:model-value', $event)"
     :ui="{
-      width: 'sm:max-w-lg',
+      width: 'sm:max-w-2xl',
       overlay: { background: 'bg-gray-950/50' },
       background: 'bg-white dark:bg-gray-900',
       padding: 'p-0',

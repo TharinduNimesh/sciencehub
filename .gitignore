@@ -25,3 +25,7 @@ logs
 
 # AI
 .github/
+
+
+# for prevent conflict
+app/utils/is-student.ts
