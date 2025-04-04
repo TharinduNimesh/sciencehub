@@ -59,16 +59,194 @@
                   </span>
                 </div>
               </div>
-              <UButton
-                v-if="lesson"
-                color="gray"
-                variant="soft"
-                icon="i-heroicons-pencil-square"
-                @click="navigateToEdit(lesson)"
-                :ui="{ rounded: 'rounded-full' }"
-              >
-                Edit
-              </UButton>
+            </div>
+            
+            <!-- Student Materials Section - New Modern Design -->
+            <div v-if="hasStudentMaterials" class="mt-8">
+              <div class="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+                <!-- Header with icon -->
+                <div class="p-4 bg-gradient-to-r from-primary-50 to-blue-50 border-b border-gray-200">
+                  <h3 class="font-medium text-lg flex items-center text-gray-800">
+                    <UIcon name="i-heroicons-book-open" class="mr-2 text-primary-500" />
+                    Student Materials
+                    <UBadge color="primary" variant="soft" class="ml-2" size="sm">
+                      {{ materialsCount }} Resources
+                    </UBadge>
+                  </h3>
+                </div>
+                
+                <!-- Materials content -->
+                <div>
+                  <!-- Tabbed navigation -->
+                  <div class="border-b border-gray-200">
+                    <nav class="flex gap-1 px-2 pt-2">
+                      <button 
+                        v-if="hasDocuments"
+                        @click="activeTab = 'documents'" 
+                        :class="[
+                          'py-3 px-4 text-sm font-medium rounded-t-lg transition-colors',
+                          activeTab === 'documents' 
+                            ? 'bg-white border-b-2 border-primary-500 text-primary-700' 
+                            : 'text-gray-600 hover:text-primary-500 hover:bg-gray-50'
+                        ]"
+                      >
+                        <div class="flex items-center">
+                          <UIcon name="i-heroicons-document-text" class="mr-1.5" />
+                          Documents
+                        </div>
+                      </button>
+                      
+                      <button 
+                        v-if="hasImages"
+                        @click="activeTab = 'images'" 
+                        :class="[
+                          'py-3 px-4 text-sm font-medium rounded-t-lg transition-colors',
+                          activeTab === 'images' 
+                            ? 'bg-white border-b-2 border-primary-500 text-primary-700' 
+                            : 'text-gray-600 hover:text-primary-500 hover:bg-gray-50'
+                        ]"
+                      >
+                        <div class="flex items-center">
+                          <UIcon name="i-heroicons-photo" class="mr-1.5" />
+                          Images
+                        </div>
+                      </button>
+                    </nav>
+                  </div>
+                  
+                  <!-- Tab content -->
+                  <div class="p-6">
+                    <!-- Documents Tab Content -->
+                    <div v-if="activeTab === 'documents'">
+                      <div v-if="hasDocuments" class="space-y-4">
+                        <div class="grid grid-cols-1 gap-3">
+                          <!-- Document links -->
+                          <div 
+                            v-for="(link, index) in lesson?.documentLinks || []" 
+                            :key="`link-${index}`"
+                            class="flex items-center space-x-3 p-4 bg-white rounded-lg hover:bg-gray-50 transition-colors border border-gray-200"
+                          >
+                            <!-- Icon based on provider -->
+                            <div class="flex-shrink-0 h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center">
+                              <UIcon 
+                                :name="getLinkProviderIcon(link.url)" 
+                                class="text-gray-500 w-6 h-6"
+                              />
+                            </div>
+                            
+                            <!-- Document info -->
+                            <div class="flex-1 min-w-0">
+                              <h5 class="text-base font-medium text-gray-900">
+                                {{ link.name || getFileNameFromUrl(link.url) }}
+                              </h5>
+                              <div class="flex items-center mt-1">
+                                <UBadge :color="getDocumentColor(link.name || getFileNameFromUrl(link.url))" size="xs" class="mr-2">
+                                  {{ getDocumentType(link.name || getFileNameFromUrl(link.url)) }}
+                                </UBadge>
+                                <span class="text-xs text-gray-500">
+                                  {{ getLinkProviderName(link.url) }}
+                                </span>
+                              </div>
+                            </div>
+                            
+                            <!-- Action button -->
+                            <UButton 
+                              tag="a" 
+                              :href="link.url" 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              color="primary" 
+                              variant="solid" 
+                              size="sm"
+                            >
+                              <span class="flex items-center gap-1">
+                                <UIcon name="i-heroicons-arrow-top-right-on-square" />
+                                Open
+                              </span>
+                            </UButton>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div v-else class="py-12 text-center">
+                        <UIcon name="i-heroicons-document-text" class="mx-auto h-12 w-12 text-gray-300" />
+                        <h4 class="mt-2 text-sm font-medium text-gray-900">No documents available</h4>
+                        <p class="mt-1 text-sm text-gray-500">
+                          This lesson doesn't have any document materials
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <!-- Images Tab Content -->
+                    <div v-if="activeTab === 'images'">
+                      <div v-if="hasImages" class="space-y-4">
+                        <!-- Gallery layout -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                          <!-- Image cards -->
+                          <div
+                            v-for="(link, index) in lesson?.imageLinks || []"
+                            :key="`image-${index}`"
+                            class="overflow-hidden rounded-lg bg-white shadow-sm border border-gray-200"
+                          >
+                            <!-- Image preview -->
+                            <div class="aspect-video bg-gray-100 overflow-hidden">
+                              <img
+                                :src="link"
+                                class="w-full h-full object-cover"
+                                :alt="`Image resource ${index + 1}`"
+                                loading="lazy"
+                              />
+                            </div>
+                            
+                            <!-- Image info -->
+                            <div class="p-3 flex items-center justify-between">
+                              <div>
+                                <h5 class="text-sm font-medium text-gray-900">
+                                  Image {{ index + 1 }}
+                                </h5>
+                              </div>
+                              
+                              <!-- Action buttons -->
+                              <div class="flex space-x-2">
+                                <UButton
+                                  tag="a"
+                                  :href="link"
+                                  target="_blank"
+                                  color="gray" 
+                                  variant="ghost" 
+                                  icon="i-heroicons-eye"
+                                  size="xs"
+                                  square
+                                  title="View full size"
+                                />
+                                <UButton
+                                  tag="a"
+                                  :href="link"
+                                  download
+                                  color="primary" 
+                                  variant="ghost" 
+                                  icon="i-heroicons-arrow-down-tray"
+                                  size="xs"
+                                  square
+                                  title="Download"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div v-else class="py-12 text-center">
+                        <UIcon name="i-heroicons-photo" class="mx-auto h-12 w-12 text-gray-300" />
+                        <h4 class="mt-2 text-sm font-medium text-gray-900">No images available</h4>
+                        <p class="mt-1 text-sm text-gray-500">
+                          This lesson doesn't have any image materials
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -134,6 +312,11 @@ definePageMeta({
   layout: "console",
 });
 
+interface DocumentLink {
+  url: string;
+  name: string;
+}
+
 interface Lesson {
   id: number;
   title: string;
@@ -144,6 +327,11 @@ interface Lesson {
   thumbnailUrl: string;
   videoUrl: string;
   createdAt: string;
+  resourceType?: string;
+  documents?: File[];
+  documentLinks?: DocumentLink[];
+  images?: File[];
+  imageLinks?: string[];
 }
 
 const route = useRoute();
@@ -152,6 +340,61 @@ const lessonId = computed(() => Number(route.params.id));
 const loading = ref(true);
 const lesson = ref<Lesson | null>(null);
 const allLessons = ref<Lesson[]>([]);
+const activeTab = ref('documents');
+
+// Material tabs for the student materials section
+const materialTabs = [
+  {
+    label: 'Documents',
+    slot: 'documents',
+    icon: 'i-heroicons-document-text',
+  },
+  {
+    label: 'Images',
+    slot: 'images',
+    icon: 'i-heroicons-photo',
+  }
+];
+
+// Check if lesson has any student materials
+const hasStudentMaterials = computed(() => {
+  if (!lesson.value) return false;
+  
+  const hasDocuments = (lesson.value.documents && lesson.value.documents.length > 0) ||
+                      (lesson.value.documentLinks && lesson.value.documentLinks.length > 0);
+                      
+  const hasImages = (lesson.value.images && lesson.value.images.length > 0) ||
+                   (lesson.value.imageLinks && lesson.value.imageLinks.length > 0);
+                   
+  return hasDocuments || hasImages;
+});
+
+// Get total count of materials
+const materialsCount = computed(() => {
+  if (!lesson.value) return 0;
+  
+  const documentsCount = (lesson.value.documents?.length || 0) + 
+                        (lesson.value.documentLinks?.length || 0);
+                        
+  const imagesCount = (lesson.value.images?.length || 0) + 
+                     (lesson.value.imageLinks?.length || 0);
+                     
+  return documentsCount + imagesCount;
+});
+
+// Check if lesson has documents
+const hasDocuments = computed(() => {
+  if (!lesson.value) return false;
+  return (lesson.value.documents && lesson.value.documents.length > 0) || 
+         (lesson.value.documentLinks && lesson.value.documentLinks.length > 0);
+});
+
+// Check if lesson has images
+const hasImages = computed(() => {
+  if (!lesson.value) return false;
+  return (lesson.value.images && lesson.value.images.length > 0) || 
+         (lesson.value.imageLinks && lesson.value.imageLinks.length > 0);
+});
 
 // Get related lessons from the same class
 const relatedLessons = computed(() => {
@@ -180,6 +423,25 @@ onMounted(async () => {
           thumbnailUrl: "https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg",
           videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
           createdAt: "2023-09-15T10:30:00",
+          resourceType: "document",
+          // Mock document data
+          documents: [],
+          documentLinks: [
+            {
+              url: "https://drive.google.com/file/d/1abc123/view",
+              name: "Acids and Bases Handout"
+            },
+            {
+              url: "https://dropbox.com/s/def456/view",
+              name: "pH Scale Worksheet"
+            }
+          ],
+          // Mock image data
+          images: [],
+          imageLinks: [
+            "https://placehold.co/800x600/orange/white?text=Acid+Base+Reaction",
+            "https://placehold.co/800x600/blue/white?text=pH+Scale+Diagram"
+          ]
         },
         {
           id: 2,
@@ -192,6 +454,22 @@ onMounted(async () => {
           thumbnailUrl: "https://img.youtube.com/vi/L-Wtlv6E7zs/hqdefault.jpg",
           videoUrl: "https://www.youtube.com/watch?v=L-Wtlv6E7zs",
           createdAt: "2023-09-22T14:00:00",
+          resourceType: "image",
+          // Mock document data
+          documents: [],
+          documentLinks: [
+            {
+              url: "https://docs.google.com/document/d/newton-laws/edit",
+              name: "Newton's Laws Summary"
+            }
+          ],
+          // Mock image data
+          images: [],
+          imageLinks: [
+            "https://placehold.co/800x600/42b983/white?text=First+Law+Diagram",
+            "https://placehold.co/800x600/9b4dca/white?text=Second+Law+Formula",
+            "https://placehold.co/800x600/f06d06/white?text=Third+Law+Example"
+          ]
         },
         {
           id: 3,
@@ -204,6 +482,26 @@ onMounted(async () => {
           thumbnailUrl: "https://img.youtube.com/vi/8IlzKri08kk/hqdefault.jpg",
           videoUrl: "https://www.youtube.com/watch?v=8IlzKri08kk",
           createdAt: "2023-10-01T09:15:00",
+          resourceType: "document",
+          // Mock document data
+          documents: [],
+          documentLinks: [
+            {
+              url: "https://onedrive.live.com/redir?resid=cell-structure",
+              name: "Cell Structure Notes"
+            },
+            {
+              url: "https://sharepoint.com/sites/biology/cell-functions.pptx",
+              name: "Cell Functions Presentation"
+            },
+            {
+              url: "https://docs.google.com/spreadsheets/d/cell-comparison/edit",
+              name: "Plant vs Animal Cells Comparison"
+            }
+          ],
+          // Mock image data
+          images: [],
+          imageLinks: []
         },
         {
           id: 4,
@@ -215,7 +513,8 @@ onMounted(async () => {
           className: "Chemistry Class B",
           thumbnailUrl: "https://img.youtube.com/vi/V6lMdlPGDsY/hqdefault.jpg",
           videoUrl: "https://www.youtube.com/watch?v=V6lMdlPGDsY",
-          createdAt: "2023-09-29T13:15:00",
+          createdAt: "2023-09-29T13:15:00"
+          // No student materials for this lesson
         },
         {
           id: 5,
@@ -228,6 +527,18 @@ onMounted(async () => {
           thumbnailUrl: "https://img.youtube.com/vi/ckbsHM2igT0/hqdefault.jpg",
           videoUrl: "https://www.youtube.com/watch?v=ckbsHM2igT0",
           createdAt: "2023-10-06T11:20:00",
+          resourceType: "image",
+          // Mock document data
+          documents: [],
+          documentLinks: [],
+          // Mock image data
+          images: [],
+          imageLinks: [
+            "https://placehold.co/800x600/e74c3c/white?text=pH+Scale+Colors",
+            "https://placehold.co/800x600/3498db/white?text=Litmus+Paper+Test",
+            "https://placehold.co/800x600/f1c40f/white?text=Cabbage+Indicator",
+            "https://placehold.co/800x600/2ecc71/white?text=Acid+vs+Base+Indicators"
+          ]
         },
       ];
 
@@ -293,5 +604,120 @@ const navigateToEdit = (lesson: Lesson) => {
   console.log("Editing lesson:", lesson);
   // In a real implementation, you might do:
   // router.push(`/console/lessons/${lesson.id}/edit`);
+};
+
+// Document and image helper functions
+const getDocumentIcon = (filename: string): string => {
+  const ext = filename.split('.').pop()?.toLowerCase();
+
+  switch (ext) {
+    case 'pdf':
+      return 'i-heroicons-document-text';
+    case 'doc':
+    case 'docx':
+      return 'i-heroicons-document';
+    case 'ppt':
+    case 'pptx':
+      return 'i-heroicons-presentation-chart-bar';
+    case 'xls':
+    case 'xlsx':
+      return 'i-heroicons-table-cells';
+    default:
+      return 'i-heroicons-paper-clip';
+  }
+};
+
+const getDocumentType = (filename: string): string => {
+  const ext = filename.split('.').pop()?.toLowerCase();
+
+  switch (ext) {
+    case 'pdf':
+      return 'PDF';
+    case 'doc':
+    case 'docx':
+      return 'Word';
+    case 'ppt':
+    case 'pptx':
+      return 'PowerPoint';
+    case 'xls':
+    case 'xlsx':
+      return 'Excel';
+    default:
+      return ext?.toUpperCase() || 'File';
+  }
+};
+
+// Return only valid color values for UBadge component
+const getDocumentColor = (filename: string) => {
+  const ext = filename.split('.').pop()?.toLowerCase();
+
+  switch (ext) {
+    case 'pdf':
+      return 'red';
+    case 'doc':
+    case 'docx':
+      return 'blue';
+    case 'ppt':
+    case 'pptx':
+      return 'orange';
+    case 'xls':
+    case 'xlsx':
+      return 'green';
+    default:
+      return 'gray';
+  }
+};
+
+// Get icon based on link provider
+const getLinkProviderIcon = (url: string): string => {
+  if (!url) return 'i-heroicons-link';
+
+  if (url.includes('drive.google.com')) return 'i-heroicons-cloud';
+  if (url.includes('dropbox.com')) return 'i-heroicons-cloud';
+  if (url.includes('onedrive')) return 'i-heroicons-cloud';
+  if (url.includes('sharepoint')) return 'i-heroicons-cloud';
+
+  return 'i-heroicons-link';
+};
+
+// Get provider name based on URL
+const getLinkProviderName = (url: string): string => {
+  if (!url) return 'Link';
+
+  if (url.includes('drive.google.com')) return 'Google Drive';
+  if (url.includes('dropbox.com')) return 'Dropbox';
+  if (url.includes('onedrive')) return 'OneDrive';
+  if (url.includes('sharepoint')) return 'SharePoint';
+  if (url.includes('box.com')) return 'Box';
+
+  return 'Web Link';
+};
+
+// Extract filename from URL
+const getFileNameFromUrl = (url: string): string => {
+  if (!url) return 'Unknown File';
+
+  try {
+    // Try to extract filename from URL
+    const urlObj = new URL(url);
+    const pathname = urlObj.pathname;
+    const filename = pathname.split('/').pop();
+
+    if (filename) {
+      // Remove query parameters
+      return filename.split('?')[0] ?? filename;
+    }
+  } catch (e) {
+    // Silent fail for invalid URLs
+  }
+
+  return 'Document Link';
+};
+
+// Get image source from File object
+const getImageSrc = (image: File): string => {
+  // In a real app, you would have a URL for the uploaded file
+  // For this demo, we'll return a placeholder
+  return 'https://placehold.co/300x300?text=Image+Content';
 };
 </script>

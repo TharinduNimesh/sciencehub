@@ -1,6 +1,6 @@
 <template>
   <div>
-    <UFormGroup label="Video URL" required>
+    <UFormGroup label="YouTube Video URL" required>
       <UInput
         v-model="videoUrl"
         placeholder="Enter YouTube video URL"
@@ -10,23 +10,27 @@
         :loading="loading"
       />
       <p v-if="!disabled" class="text-xs text-gray-500 mt-1">
-        Enter a YouTube URL to auto-fill lesson details
+        Enter a YouTube URL to auto-fill lesson details and set the thumbnail
       </p>
     </UFormGroup>
 
-    <!-- Thumbnail preview -->
-    <UFormGroup label="Thumbnail">
-      <div class="aspect-video w-full overflow-hidden rounded-lg bg-gray-100">
-        <img
-          :src="thumbnailUrl || defaultThumbnail"
-          :alt="title"
-          draggable="false"
-          class="w-full h-full object-cover"
-          @error="handleImageError"
-        />
+    <!-- Enhanced Thumbnail preview -->
+    <UFormGroup label="Lesson Thumbnail">
+      <div class="relative">
+        <div class="aspect-video w-full overflow-hidden rounded-lg bg-gray-100 shadow-sm border border-gray-200">
+          <img
+            :src="thumbnailUrl || defaultThumbnail"
+            :alt="title"
+            draggable="false"
+            class="w-full h-full object-cover"
+            @error="handleImageError"
+          />
+        </div>
       </div>
-      <p class="text-xs text-gray-500 mt-1">
-        Thumbnail is automatically generated from the video
+      
+      <p class="text-xs text-gray-700 mt-2 flex items-center">
+        <UIcon name="i-heroicons-information-circle" class="mr-1 text-primary-500" />
+        This thumbnail will be displayed on the lesson card
       </p>
     </UFormGroup>
   </div>

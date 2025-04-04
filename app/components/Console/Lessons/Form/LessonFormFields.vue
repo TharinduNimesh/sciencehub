@@ -1,65 +1,73 @@
 <template>
-  <div class="space-y-4">
-    <UFormGroup label="Lesson Title" required>
-      <UInput
-        v-model="localTitle"
-        placeholder="Enter lesson title"
-        :disabled="loading"
-      />
-      <p v-if="loading" class="text-xs text-primary-500 mt-1">
-        Loading title...
-      </p>
-      <p v-else-if="error" class="text-xs text-red-500 mt-1">
-        {{ error }}
-      </p>
-    </UFormGroup>
+  <div class="p-4 bg-gray-50 rounded-lg border border-gray-200">
+    <h3 class="text-lg font-medium text-gray-900 mb-4 flex items-center">
+      <UIcon name="i-heroicons-information-circle" class="mr-2 text-primary-500" />
+      Lesson Information
+    </h3>
 
-    <UFormGroup label="Class" required>
-      <USelectMenu
-        v-model="localClassId"
-        :options="classOptions"
-        placeholder="Select class"
-        value-attribute="id"
-        option-attribute="name"
-        icon="i-heroicons-academic-cap"
-      />
-    </UFormGroup>
+    <div class="space-y-4">
+      <UFormGroup label="Lesson Title" required>
+        <UInput
+          v-model="localTitle"
+          placeholder="Enter lesson title"
+          :disabled="loading"
+          icon="i-heroicons-pencil"
+        />
+        <p v-if="loading" class="text-xs text-primary-500 mt-1">
+          Loading title...
+        </p>
+        <p v-else-if="error" class="text-xs text-red-500 mt-1">
+          {{ error }}
+        </p>
+      </UFormGroup>
 
-    <UFormGroup
-      label="Description"
-      help="Provide a brief summary of what students will learn"
-    >
-      <UTextarea
-        v-model="localDescription"
-        placeholder="Enter lesson description"
-        :ui="{
-          height: 'h-24',
-          base: 'block w-full rounded-md text-gray-900 dark:text-white shadow-sm',
-        }"
-      />
-    </UFormGroup>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <UFormGroup label="Class" required>
+          <USelectMenu
+            v-model="localClassId"
+            :options="classOptions"
+            placeholder="Select class"
+            value-attribute="id"
+            option-attribute="name"
+            icon="i-heroicons-academic-cap"
+          />
+        </UFormGroup>
 
-    <UFormGroup label="Duration (minutes)" required>
-      <UInput
-        v-model="localDuration"
-        type="number"
-        placeholder="Enter duration in minutes"
-        min="1"
-        icon="i-heroicons-clock"
-        :disabled="loading"
-      />
-      <p v-if="loading" class="text-xs text-primary-500 mt-1">
-        Loading duration...
-      </p>
-      <p v-else-if="error" class="text-xs text-red-500 mt-1">
-        {{ error }}
-      </p>
-    </UFormGroup>
+        <UFormGroup label="Duration (minutes)" required>
+          <UInput
+            v-model="localDuration"
+            type="number"
+            placeholder="Enter duration in minutes"
+            min="1"
+            icon="i-heroicons-clock"
+            :disabled="loading"
+          />
+          <p v-if="loading" class="text-xs text-primary-500 mt-1">
+            Loading duration...
+          </p>
+        </UFormGroup>
+      </div>
+
+      <UFormGroup
+        label="Description"
+        help="Provide a brief summary of what students will learn"
+      >
+        <UTextarea
+          v-model="localDescription"
+          placeholder="Enter lesson description"
+          :ui="{
+            height: 'h-24',
+            base: 'block w-full rounded-md text-gray-900 dark:text-white shadow-sm',
+          }"
+        />
+      </UFormGroup>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, watch } from 'vue';
+import type { PropType } from 'vue';
 
 const props = defineProps({
   title: {
@@ -87,7 +95,7 @@ const props = defineProps({
     default: ''
   },
   classOptions: {
-    type: Array,
+    type: Array as PropType<Array<{ id: string | number; name: string; [key: string]: any }>>,
     default: () => []
   }
 });

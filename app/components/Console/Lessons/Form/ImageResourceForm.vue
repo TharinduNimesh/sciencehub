@@ -25,7 +25,7 @@
       <!-- User-friendly upload area -->
       <div
         class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-        @click="imageUploadReady && $refs.imageFileInput?.click()"
+        @click="triggerFileInputClick"
         @dragover.prevent
         @dragleave.prevent
         @drop.prevent="handleImageDrop"
@@ -101,7 +101,7 @@
 
       <UAlert
         v-if="localImageLinks.length === 0"
-        color="info"
+        color="blue"
         icon="i-heroicons-information-circle"
       >
         <template #title>Add Images from Cloud Storage or Web</template>
@@ -373,7 +373,7 @@ function isValidImage(file: File): boolean {
 
 // Validate links only on blur to improve performance
 function validateImageLinkInput(index: number) {
-  const link = localImageLinks.value[index];
+  const link = localImageLinks.value[index] ?? '';
   
   if (link.trim() && !isValidImageLink(link)) {
     useToast().add({
@@ -394,31 +394,17 @@ function isValidImageLink(url: string): boolean {
 }
 
 // Optimized thumbnail update with throttling to reduce overhead
-let thumbnailUpdateTimeout: number | null = null;
+// Completely disabled - we no longer want images to affect the thumbnail
 function updateThumbnail() {
-  if (thumbnailUpdateTimeout) return;
-  
-  thumbnailUpdateTimeout = window.setTimeout(() => {
-    thumbnailUpdateTimeout = null;
-    
-    // Pick the first available image source for the thumbnail
-    if (localImages.value.length > 0) {
-      try {
-        const thumbnailUrl = URL.createObjectURL(localImages.value[0]);
-        emit('thumbnail-update', thumbnailUrl);
-        return;
-      } catch (e) {
-        console.error('Error creating object URL', e);
-      }
-    }
-    
-    const validImageLink = filteredImageLinks.value[0];
-    if (validImageLink) {
-      emit('thumbnail-update', validImageLink);
-      return;
-    }
-    
-    emit('thumbnail-update', 'https://placehold.co/800x450?text=Image+Gallery');
-  }, 300);
+  // Disabled - all thumbnails now come from YouTube videos only
+  // No longer emitting thumbnail-update events
+  return;
+}
+
+// Safe method to trigger file input click with proper typing
+function triggerFileInputClick() {
+  if (imageUploadReady.value && imageFileInput.value) {
+    imageFileInput.value.click();
+  }
 }
 </script>
