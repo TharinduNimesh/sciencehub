@@ -9,6 +9,9 @@
       padding: 'p-0',
       base: 'relative z-50 flex flex-col h-screen shadow-xl',
     }"
+    @before-enter="handleBeforeEnter"
+    @after-leave="handleAfterLeave"
+    :prevent-close="isSubmitting || isLoadingVideoData"
   >
     <!-- Header -->
     <div
@@ -16,17 +19,27 @@
     >
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-3">
-          <UIcon name="i-heroicons-video-camera" class="w-6 h-6 text-primary-500" />
+          <UIcon
+            name="i-heroicons-video-camera"
+            class="w-6 h-6 text-primary-500"
+          />
           <div>
-            <h3 class="text-lg font-semibold leading-6 text-gray-900 dark:text-white">
-              {{ isEditing ? 'Edit Lesson' : 'Add New Lesson' }}
+            <h3
+              class="text-lg font-semibold leading-6 text-gray-900 dark:text-white"
+            >
+              {{ isEditing ? "Edit Lesson" : "Add New Lesson" }}
             </h3>
             <p class="text-sm text-gray-500 dark:text-gray-400">
-              {{ isEditing ? 'Update the lesson details' : 'Create a new lesson recording or resource' }}
+              {{
+                isEditing
+                  ? "Update the lesson details"
+                  : "Create a new lesson recording or resource"
+              }}
             </p>
           </div>
         </div>
         <UButton
+          ref="closeButtonRef"
           color="gray"
           variant="ghost"
           icon="i-heroicons-x-mark-20-solid"
@@ -39,78 +52,46 @@
     <!-- Form Content -->
     <div class="flex-1 px-6 py-5 overflow-y-auto">
       <form @submit.prevent="handleSubmit" class="space-y-4">
-        <!-- Video URL (moved to top for better UX) -->
-        <UFormGroup label="Video URL" required>
-          <UInput
-            v-model="form.videoUrl"
-            placeholder="Enter YouTube video URL"
-            icon="i-heroicons-link"
-            :disabled="isEditing"
-            @update:model-value="handleVideoUrlChange"
-            :loading="isLoadingVideoData"
-          />
-          <p v-if="!isEditing" class="text-xs text-gray-500 mt-1">
-            Enter a YouTube URL to auto-fill lesson details
-          </p>
-        </UFormGroup>
+        <!-- Resource Type Selection -->
+        <ResourceTypeSelector
+          v-model="form.resourceType"
+          @update:model-value="handleResourceTypeChange"
+        />
 
-        <UFormGroup label="Lesson Title" required>
-          <UInput
-            v-model="form.title"
-            placeholder="Title will be loaded automatically"
-            :disabled="isLoadingVideoData"
-          />
-        </UFormGroup>
+        <!-- Resource-specific Forms -->
+        <VideoResourceForm
+          v-if="form.resourceType === 'video'"
+          v-model:video-url="form.videoUrl"
+          :thumbnail-url="form.thumbnailUrl"
+          :title="form.title"
+          :disabled="isEditing"
+          :loading="isLoadingVideoData"
+          @video-url-change="handleVideoUrlChange"
+        />
 
-        <UFormGroup label="Class" required>
-          <USelectMenu
-            v-model="form.classId"
-            :options="classOptions"
-            placeholder="Select class"
-            value-attribute="id"
-            option-attribute="name"
-            icon="i-heroicons-academic-cap"
-          />
-        </UFormGroup>
+        <DocumentResourceForm
+          v-if="form.resourceType === 'document'"
+          v-model:documents="form.documents"
+          v-model:document-links="form.documentLinks"
+        />
 
-        <UFormGroup
-          label="Description"
-          help="Provide a brief summary of what students will learn"
-        >
-          <UTextarea
-            v-model="form.description"
-            placeholder="Enter lesson description"
-            :ui="{
-              height: 'h-24',
-              base: 'block w-full rounded-md text-gray-900 dark:text-white shadow-sm',
-            }"
-          />
-        </UFormGroup>
+        <ImageResourceForm
+          v-if="form.resourceType === 'image'"
+          v-model:images="form.images"
+          v-model:image-links="form.imageLinks"
+          @thumbnail-update="updateImageThumbnail"
+        />
 
-        <UFormGroup label="Duration (minutes)" required>
-          <UInput
-            v-model="form.duration"
-            type="number"
-            placeholder="Duration will be set automatically"
-            min="1"
-            icon="i-heroicons-clock"
-            :disabled="isLoadingVideoData"
-          />
-        </UFormGroup>
-
-        <!-- Thumbnail preview -->
-        <UFormGroup label="Thumbnail">
-          <div class="aspect-video w-full overflow-hidden rounded-lg bg-gray-100">
-            <img
-              :src="form.thumbnailUrl || defaultThumbnail"
-              :alt="form.title"
-              draggable="false"
-              class="w-full h-full object-cover"
-              @error="handleImageError"
-            />
-          </div>
-          <p class="text-xs text-gray-500 mt-1">Thumbnail is automatically generated from the video</p>
-        </UFormGroup>
+        <!-- Common Form Fields -->
+        <LessonFormFields
+          v-model:title="form.title"
+          v-model:description="form.description"
+          v-model:class-id="form.classId"
+          v-model:duration="form.duration"
+          :loading="isLoadingVideoData"
+          :error="metadataError"
+          :class-options="classOptions"
+        />
       </form>
     </div>
 
@@ -126,9 +107,14 @@
           @click="$emit('update:model-value', false)"
         />
         <UButton
+          ref="submitButtonRef"
           color="primary"
           :loading="isSubmitting"
-          :disabled="isSubmitting || (form.videoUrl && !isYoutubeUrl(form.videoUrl)) || isLoadingVideoData"
+          :disabled="
+            isSubmitting ||
+            (form.resourceType === 'video' && form.videoUrl && !isYoutubeUrl(form.videoUrl)) ||
+            isLoadingVideoData
+          "
           :label="isEditing ? 'Update Lesson' : 'Add Lesson'"
           :icon="isEditing ? 'i-heroicons-check' : 'i-heroicons-plus'"
           @click="handleSubmit"
@@ -139,7 +125,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from "vue";
+import { ref, computed, watch, nextTick, onMounted } from "vue";
+import ResourceTypeSelector from './Form/ResourceTypeSelector.vue';
+import VideoResourceForm from './Form/VideoResourceForm.vue';
+import DocumentResourceForm from './Form/DocumentResourceForm.vue';
+import ImageResourceForm from './Form/ImageResourceForm.vue';
+import LessonFormFields from './Form/LessonFormFields.vue';
+import { 
+  isYoutubeUrl, 
+  extractYoutubeVideoId, 
+  getYoutubeThumbnail, 
+  getResourceTypeThumbnail, 
+  debounce, 
+  fetchYoutubeMetadata, 
+  estimateVideoDuration 
+} from '../../../composables/useLesson';
 
 // Define default thumbnail for consistency across the app
 const defaultThumbnail = "https://placehold.co/800x450?text=No+Thumbnail";
@@ -147,29 +147,42 @@ const defaultThumbnail = "https://placehold.co/800x450?text=No+Thumbnail";
 const props = defineProps({
   modelValue: {
     type: Boolean,
-    required: true
+    required: true,
   },
   isEditing: {
     type: Boolean,
-    default: false
+    default: false,
   },
   editData: {
     type: Object,
-    default: null
-  }
+    default: null,
+  },
 });
 
-const emit = defineEmits(['update:model-value', 'add']);
+const emit = defineEmits(["update:model-value", "add"]);
 
 const isSubmitting = ref(false);
 const isLoadingVideoData = ref(false);
+const metadataError = ref<string | null>(null);
+
+// Add refs for focus management
+const closeButtonRef = ref<HTMLButtonElement | null>(null);
+const submitButtonRef = ref<HTMLButtonElement | null>(null);
+const previousFocus = ref<HTMLElement | null>(null);
+
+// Enhanced form with link support
 const form = ref({
   title: "New Lesson",
   description: "",
   classId: undefined as string | number | undefined,
+  resourceType: "video", // Default to video type
   videoUrl: "",
   thumbnailUrl: "",
   duration: 30,
+  documents: [] as File[], // For document uploads
+  documentLinks: [{ url: "", name: "" }], // For document links
+  images: [] as File[], // For image uploads
+  imageLinks: [""], // For image links
 });
 
 // Sample class options - In a real app, these would come from an API
@@ -177,22 +190,58 @@ const classOptions = ref([
   { id: 1, name: "Class A - Physics (Online)", type: "online" },
   { id: 2, name: "Class B - Chemistry (Physical)", type: "physical" },
   { id: 3, name: "Class C - Biology (Online)", type: "online" },
-  { id: 4, name: "Class D - Mathematics (Physical)", type: "physical" }
+  { id: 4, name: "Class D - Mathematics (Physical)", type: "physical" },
 ]);
+
+// Focus management handlers
+const handleBeforeEnter = () => {
+  // Store the currently focused element before opening the modal
+  previousFocus.value = document.activeElement as HTMLElement;
+};
+
+const handleAfterLeave = () => {
+  // Return focus to the previously focused element
+  if (previousFocus.value && typeof previousFocus.value.focus === 'function') {
+    nextTick(() => {
+      previousFocus.value?.focus();
+    });
+  }
+};
+
+// Set initial focus when modal opens
+watch(() => props.modelValue, (isOpen) => {
+  if (isOpen) {
+    nextTick(() => {
+      // Focus on close button after modal is opened
+      if (closeButtonRef.value) {
+        closeButtonRef.value.focus();
+      }
+    });
+  }
+}, { immediate: true });
 
 // Reset or populate form when modal opens/closes or when editData changes
 watch(
-  [() => props.modelValue, () => props.editData], 
+  [() => props.modelValue, () => props.editData],
   ([newModelValue, newEditData]) => {
     if (newModelValue && props.isEditing && newEditData) {
       // Populate form with lesson data for editing
       form.value = {
-        title: newEditData.title || 'New Lesson',
-        description: newEditData.description || '',
+        title: newEditData.title || "New Lesson",
+        description: newEditData.description || "",
         classId: newEditData.classId || undefined,
-        videoUrl: newEditData.videoUrl || '',
-        thumbnailUrl: newEditData.thumbnailUrl || getYoutubeThumbnail(newEditData.videoUrl),
-        duration: newEditData.duration || 30
+        resourceType: newEditData.resourceType || "video",
+        videoUrl: newEditData.videoUrl || "",
+        thumbnailUrl:
+          newEditData.thumbnailUrl ||
+          (newEditData.resourceType === "video"
+            ? getYoutubeThumbnail(newEditData.videoUrl)
+            : getResourceTypeThumbnail(newEditData.resourceType || "video")),
+        duration: newEditData.duration || 30,
+        documents: newEditData.documents || [],
+        documentLinks: newEditData.documentLinks || [{ url: "", name: "" }],
+        images: newEditData.images || [],
+        imageLinks: newEditData.imageLinks || [""],
       };
     } else if (newModelValue && !props.isEditing) {
       // Reset form when opening for new lesson
@@ -200,27 +249,19 @@ watch(
         title: "New Lesson",
         description: "",
         classId: undefined,
+        resourceType: "video",
         videoUrl: "",
         thumbnailUrl: "",
         duration: 30,
+        documents: [],
+        documentLinks: [{ url: "", name: "" }],
+        images: [],
+        imageLinks: [""],
       };
     }
   },
   { immediate: true }
 );
-
-// Debounce function for URL input
-const debounce = (fn: Function, delay: number) => {
-  let timeoutId: number;
-  return function(...args: any[]) {
-    if (timeoutId) {
-      clearTimeout(timeoutId);
-    }
-    timeoutId = setTimeout(() => {
-      fn.apply(this, args);
-    }, delay) as unknown as number;
-  };
-};
 
 // Handle video URL changes to automatically update thumbnail, title and duration
 const handleVideoUrlChange = debounce(async (url: string) => {
@@ -230,31 +271,44 @@ const handleVideoUrlChange = debounce(async (url: string) => {
 
   try {
     isLoadingVideoData.value = true;
+    metadataError.value = null; // Reset error state
 
     // Extract video ID
     const videoId = extractYoutubeVideoId(url);
-    if (!videoId) return;
+    if (!videoId) {
+      metadataError.value = "Could not extract video ID from URL";
+      return;
+    }
 
     // Set thumbnail immediately
     form.value.thumbnailUrl = getYoutubeThumbnail(url);
 
-    // Fetch video metadata from our API endpoint
-    const response = await fetch(`/api/youtube/metadata?url=${encodeURIComponent(url)}`);
-    const videoData = await response.json();
-    
-    if (videoData && !videoData.error) {
-      form.value.title = videoData.title;
-      
-      // Set duration in minutes from the API response
-      if (videoData.durationMinutes) {
-        form.value.duration = videoData.durationMinutes;
+    try {
+      // Fetch metadata using the utility function
+      const data = await fetchYoutubeMetadata(url);
+
+      if (data && data.title) {
+        form.value.title = data.title;
+
+        // Estimate duration since oEmbed doesn't provide it
+        const estimatedDuration = await estimateVideoDuration(videoId);
+        form.value.duration = estimatedDuration;
+      } else {
+        metadataError.value = "No title found in the response";
+        form.value.title = `YouTube Video (${videoId})`;
       }
+    } catch (apiError) {
+      console.error("API error:", apiError);
+      metadataError.value = "Could not fetch video details. Please enter manually.";
+      form.value.title = `YouTube Video (${videoId})`;
     }
   } catch (error) {
     console.error("Error fetching video data:", error);
+    metadataError.value = "Failed to process video URL";
+
     useToast().add({
       title: "Error",
-      description: "Failed to fetch video information. Please check the URL and try again.",
+      description: "Failed to fetch video information. Please enter details manually.",
       color: "red",
     });
   } finally {
@@ -262,48 +316,35 @@ const handleVideoUrlChange = debounce(async (url: string) => {
   }
 }, 500);
 
-// Check if URL is a YouTube link
-const isYoutubeUrl = (url: string): boolean => {
-  if (!url) return false;
-  return url.includes('youtube.com') || url.includes('youtu.be');
-};
+// Change handler for resource type selection
+function handleResourceTypeChange(type: string) {
+  form.value.resourceType = type;
 
-// Extract YouTube video ID from URL
-function extractYoutubeVideoId(url: string): string {
-  if (!url) return '';
-  
-  let videoId = '';
-  
-  if (url.includes('youtube.com/watch')) {
-    const urlParams = new URLSearchParams(url.split('?')[1]);
-    videoId = urlParams.get('v') || '';
-  } else if (url.includes('youtu.be')) {
-    videoId = url.split('/').pop() || '';
-    // Remove any additional parameters
-    videoId = videoId.split('?')[0];
+  // Reset error states when switching resource types
+  metadataError.value = null;
+
+  // Update thumbnail based on resource type
+  if (type !== "video") {
+    form.value.thumbnailUrl = getResourceTypeThumbnail(type);
+  } else if (form.value.videoUrl) {
+    form.value.thumbnailUrl = getYoutubeThumbnail(form.value.videoUrl);
   }
-  
-  return videoId;
 }
 
-// Get YouTube thumbnail URL from video URL
-function getYoutubeThumbnail(url: string): string {
-  if (!url) return defaultThumbnail;
-  if (!isYoutubeUrl(url)) return defaultThumbnail;
-  
-  const videoId = extractYoutubeVideoId(url);
-  if (!videoId) return defaultThumbnail;
-  
-  // Return YouTube thumbnail URL (high quality)
-  return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+// Handle image thumbnail updates from the ImageResourceForm component
+function updateImageThumbnail(thumbnailUrl: string) {
+  if (form.value.resourceType === "image") {
+    form.value.thumbnailUrl = thumbnailUrl;
+  }
 }
 
-const handleImageError = (event: Event) => {
-  // Set a fallback image if the provided URL fails to load
+// Handle image loading errors
+function handleImageError(event: Event) {
   const target = event.target as HTMLImageElement;
   target.src = defaultThumbnail;
-};
+}
 
+// Updated submit handler to handle different resource types including links
 const handleSubmit = async () => {
   if (!form.value.classId) {
     useToast().add({
@@ -314,28 +355,78 @@ const handleSubmit = async () => {
     return;
   }
 
-  if (!props.isEditing && !isYoutubeUrl(form.value.videoUrl)) {
+  // Validate based on resource type
+  if (
+    form.value.resourceType === "video" &&
+    !props.isEditing &&
+    !isYoutubeUrl(form.value.videoUrl)
+  ) {
     useToast().add({
       title: "Validation Error",
       description: "Please enter a valid YouTube URL",
       color: "red",
     });
     return;
+  } else if (form.value.resourceType === "document") {
+    const hasDocuments = form.value.documents.length > 0;
+    const hasDocumentLinks = form.value.documentLinks.some((link) =>
+      link.url.trim()
+    );
+
+    if (!hasDocuments && !hasDocumentLinks) {
+      useToast().add({
+        title: "Validation Error",
+        description: "Please upload at least one document or add a document link",
+        color: "red",
+      });
+      return;
+    }
+  } else if (form.value.resourceType === "image") {
+    const hasImages = form.value.images.length > 0;
+    const hasImageLinks = form.value.imageLinks.some((link) => link.trim());
+
+    if (!hasImages && !hasImageLinks) {
+      useToast().add({
+        title: "Validation Error",
+        description: "Please upload at least one image or add an image link",
+        color: "red",
+      });
+      return;
+    }
   }
 
   try {
     isSubmitting.value = true;
 
-    // Make sure to include the automatically generated thumbnail
-    if (!form.value.thumbnailUrl && form.value.videoUrl) {
-      form.value.thumbnailUrl = getYoutubeThumbnail(form.value.videoUrl);
+    // Filter out empty links before submitting
+    const filteredDocumentLinks = form.value.documentLinks.filter((link) =>
+      link.url.trim()
+    );
+    const filteredImageLinks = form.value.imageLinks.filter((link) =>
+      link.trim()
+    );
+
+    // Make sure thumbnail is set based on resource type
+    if (!form.value.thumbnailUrl) {
+      if (form.value.resourceType === "video" && form.value.videoUrl) {
+        form.value.thumbnailUrl = getYoutubeThumbnail(form.value.videoUrl);
+      } else if (form.value.resourceType === "image") {
+        // Will be handled by ImageResourceForm
+      } else {
+        form.value.thumbnailUrl = getResourceTypeThumbnail(
+          form.value.resourceType
+        );
+      }
     }
 
-    // Prepare form data
+    // Prepare form data with filtered links
     const formData = {
       ...form.value,
+      documentLinks: filteredDocumentLinks,
+      imageLinks: filteredImageLinks,
       // Get class name from the selected class ID for display purposes
-      className: classOptions.value.find(c => c.id === form.value.classId)?.name || '',
+      className:
+        classOptions.value.find((c) => c.id === form.value.classId)?.name || "",
     };
 
     emit("add", formData);
@@ -346,7 +437,9 @@ const handleSubmit = async () => {
     console.error("Error with lesson:", error);
     useToast().add({
       title: "Error",
-      description: `Failed to ${props.isEditing ? 'update' : 'add'} lesson. Please try again.`,
+      description: `Failed to ${
+        props.isEditing ? "update" : "add"
+      } lesson. Please try again.`,
       color: "red",
     });
   } finally {
