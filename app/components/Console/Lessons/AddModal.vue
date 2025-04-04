@@ -118,6 +118,7 @@
                 placeholder="Select class"
                 icon="i-heroicons-academic-cap"
                 :disabled="isLoadingVideo"
+                multiple
               />
             </UFormGroup>
 
@@ -224,8 +225,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onUnmounted } from "vue";
+import { ref, computed, watch, nextTick, onUnmounted, onMounted } from "vue";
 import { useYouTubeVideo } from "~/composables/useYouTubeVideo";
+import { useLesson } from "~/composables/useLesson";
+import { useClasses } from "~/composables/useClasses";
 import ResourceSummary from "./ResourceSummary.vue";
 
 // Define resource type interface
@@ -250,7 +253,7 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(["update:model-value", "add"]);
+const emit = defineEmits(["update:model-value", "add", "created"]);
 
 const isSubmitting = ref(false);
 
@@ -268,11 +271,14 @@ const {
   isYoutubeUrl,
 } = useYouTubeVideo();
 
+// Use the Lesson composable
+const { createLesson, loading: savingLesson } = useLesson();
+
 // Form interface
 interface LessonForm {
   title: string;
   description: string;
-  classId: string | number | undefined;
+  classId: number[]; // Changed to array of numbers for multiple selection
   videoUrl: string;
   thumbnailUrl: string;
   duration: string;
@@ -283,7 +289,7 @@ interface LessonForm {
 const form = ref<LessonForm>({
   title: "",
   description: "",
-  classId: undefined,
+  classId: [], // Initialize as empty array
   videoUrl: "",
   thumbnailUrl: "",
   duration: "00:00",
@@ -298,13 +304,27 @@ const resourceTypeOptions = [
   { label: "Link", value: "link", icon: "i-heroicons-link" },
 ];
 
-// Sample class options - In a real app, these would come from an API
-const classOptions = ref([
-  { id: 1, name: "Class A - Physics (Online)", type: "online" },
-  { id: 2, name: "Class B - Chemistry (Physical)", type: "physical" },
-  { id: 3, name: "Class C - Biology (Online)", type: "online" },
-  { id: 4, name: "Class D - Mathematics (Physical)", type: "physical" },
-]);
+// Class options state
+const classOptions = ref<{ id: number; name: string }[]>([]);
+const { getClasses, loading: loadingClasses } = useClasses();
+
+// Load classes when component mounts
+onMounted(async () => {
+  try {
+    const classes = await getClasses();
+    classOptions.value = classes.map((c) => ({
+      id: c.id,
+      name: `${c.name} - Grade ${c.grade}`,
+    }));
+  } catch (error) {
+    console.error("Error loading classes:", error);
+    useToast().add({
+      title: "Error",
+      description: "Failed to load classes",
+      color: "red",
+    });
+  }
+});
 
 // Focus management handlers
 const handleBeforeEnter = () => {
@@ -387,7 +407,7 @@ watch(
       form.value = {
         title: newEditData.title || "",
         description: newEditData.description || "",
-        classId: newEditData.classId || undefined,
+        classId: newEditData.classId || [],
         videoUrl: newEditData.videoUrl || "",
         thumbnailUrl: newEditData.thumbnailUrl || "",
         duration: newEditData.duration || 30,
@@ -397,7 +417,7 @@ watch(
       form.value = {
         title: "",
         description: "",
-        classId: undefined,
+        classId: [],
         videoUrl: "",
         thumbnailUrl: "",
         duration: "00:00",
@@ -410,10 +430,10 @@ watch(
 
 // Form submission handler
 const handleSubmit = async () => {
-  if (!form.value.classId) {
+  if (!form.value.classId.length) {
     useToast().add({
       title: "Validation Error",
-      description: "Please select a class for this lesson",
+      description: "Please select at least one class for this lesson",
       color: "red",
     });
     return;
@@ -436,22 +456,41 @@ const handleSubmit = async () => {
       (resource) => resource.type && resource.name && resource.url
     );
 
-    const formData = {
-      ...form.value,
+    // Create the lesson in the database
+    await createLesson({
+      title: form.value.title,
+      description: form.value.description,
+      duration: parseInt(form.value.duration),
+      videoUrl: form.value.videoUrl,
+      thumbnailUrl: form.value.thumbnailUrl,
+      classIds: form.value.classId, // Pass array of class IDs
       resources: validResources,
-      className:
-        classOptions.value.find((c) => c.id === form.value.classId)?.name || "",
-    };
+    });
 
-    emit("add", formData);
+    useToast().add({
+      title: "Success",
+      description: "Lesson created successfully",
+      color: "green",
+    });
+
     emit("update:model-value", false);
+    emit("created");
+
+    // Reset form
+    form.value = {
+      title: "",
+      description: "",
+      classId: [], // Reset to empty array
+      videoUrl: "",
+      thumbnailUrl: "",
+      duration: "00:00",
+      resources: [],
+    };
   } catch (error) {
-    console.error("Error with lesson:", error);
+    console.error("Error creating lesson:", error);
     useToast().add({
       title: "Error",
-      description: `Failed to ${
-        props.isEditing ? "update" : "add"
-      } lesson. Please try again.`,
+      description: "Failed to create lesson. Please try again.",
       color: "red",
     });
   } finally {
