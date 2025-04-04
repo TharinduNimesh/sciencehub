@@ -1,12 +1,7 @@
 <template>
   <div class="bg-white p-4 rounded-lg border border-gray-200 mb-6">
     <div class="flex flex-col space-y-4">
-      <div :class="{
-        'grid gap-4': true,
-        'grid-cols-1 sm:grid-cols-3 lg:grid-cols-4': isAdmin() && !isTimetableView,
-        'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4': isTimetableView,
-        'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3': !isAdmin() && !isTimetableView
-      }">
+      <div class="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <UInput
           v-model="localFilters.search"
           placeholder="Search by class name"

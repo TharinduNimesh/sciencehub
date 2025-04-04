@@ -306,14 +306,14 @@ const resourceTypeOptions = [
 
 // Class options state
 const classOptions = ref<{ id: number; name: string }[]>([]);
-const { getClasses, loading: loadingClasses } = useClasses();
+const { getActiveClasses, loading: loadingClasses } = useClasses();
 
 // Load classes when component mounts
 onMounted(async () => {
   try {
-    const classes = await getClasses();
+    const classes = await getActiveClasses();
     classOptions.value = classes.map((c) => ({
-      id: c.id,
+      id: Number(c.id), // Ensure id is a number
       name: `${c.name} - Grade ${c.grade}`,
     }));
   } catch (error) {

@@ -269,6 +269,27 @@ export const useClasses = () => {
     }
   }
 
+  const getActiveClasses = async () => {
+    loading.value = true
+    error.value = null
+
+    try {
+      const { data, error: err } = await supabase
+        .from('classes')
+        .select('*')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+
+      if (err) throw err
+      return data as Class[]
+    } catch (err) {
+      error.value = err as Error
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     getClasses,
     getClassById,
@@ -281,6 +302,7 @@ export const useClasses = () => {
     cancelNextSession,
     getTimeTable,
     cancelClassByDate,
-    rescheduleClassByDate
+    rescheduleClassByDate,
+    getActiveClasses
   }
 }

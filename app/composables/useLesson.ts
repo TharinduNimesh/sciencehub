@@ -15,13 +15,20 @@ export interface CreateLessonData {
 }
 
 export interface Lesson {
-  id: number
+  id: string // Changed from number to string to match the component
   title: string
   description: string
   duration: number
   video_url: string
   thumbnail_url: string | null
   created_at: string
+  is_hidden: boolean
+  class_lessons?: {
+    class_id: number
+    classes: {
+      name: string
+    }
+  }[]
 }
 
 export interface LessonResource {
@@ -142,11 +149,69 @@ export const useLesson = () => {
     }
   }
 
+  const getAllLessons = async () => {
+    try {
+      loading.value = true
+      error.value = null
+
+      const { data, error: err } = await supabase
+        .from('lessons')
+        .select(`
+          *,
+          class_lessons (
+            class_id,
+            classes (
+              name
+            )
+          )
+        `)
+        .order('created_at', { ascending: false })
+
+      if (err) throw err
+
+      // Transform data to match the expected interface
+      return data?.map(lesson => ({
+        ...lesson,
+        id: lesson.id.toString(),
+        classId: lesson.class_lessons?.[0]?.class_id ?? 0,
+        className: lesson.class_lessons?.[0]?.classes?.name ?? 'Unknown Class',
+      })) ?? []
+    } catch (err) {
+      error.value = err as Error
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const hideLesson = async (lessonId: number) => {
+    try {
+      loading.value = true
+      error.value = null
+
+      const { error: err } = await supabase
+        .from('lessons')
+        .update({ is_hidden: true })
+        .eq('id', lessonId)
+
+      if (err) throw err
+
+      return true
+    } catch (err) {
+      error.value = err as Error
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     createLesson,
     getLessonById,
     getLessonResources,
     getLessonsByClassId,
+    getAllLessons,
+    hideLesson,
     loading,
     error
   }

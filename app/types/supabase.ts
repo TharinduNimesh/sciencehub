@@ -118,6 +118,7 @@ export interface Database {
           video_url: string
           thumbnail_url: string | null
           created_at: string
+          is_hidden: boolean
         }
         Insert: {
           title: string
@@ -125,6 +126,7 @@ export interface Database {
           duration: number
           video_url: string
           thumbnail_url?: string | null
+          is_hidden?: boolean
         }
       }
       lesson_resources: {

@@ -35,14 +35,16 @@
               />
             </div>
           </div>
-          <UButton
-            label="Add New Lesson"
-            color="primary"
-            icon="i-heroicons-plus"
-            :ui="{ rounded: 'rounded-full' }"
-            :block="isMobile"
-            @click="isAddModalOpen = true"
-          />
+          <div class="flex-1 sm:flex-initial">
+            <UButton
+              label="Add New Lesson"
+              color="primary"
+              icon="i-heroicons-plus"
+              :ui="{ rounded: 'rounded-full' }"
+              :block="isMobile"
+              @click="isAddModalOpen = true"
+            />
+          </div>
         </div>
       </div>
 
@@ -124,6 +126,7 @@
           @edit="handleEditLesson"
           @view="navigateToLesson"
           @delete="handleDeleteLesson"
+          @hide="handleVisibilityChange"
         />
       </div>
 
@@ -179,168 +182,247 @@ import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { useSidebarStore } from "~/stores/sidebar";
 import { isMobileScreen } from "~/lib/utils";
+import { useLesson } from "~/composables/useLesson";
+import { useClasses } from "~/composables/useClasses";
+import type { Database } from "~/types/supabase";
+import type { LessonFilters } from "~/components/Console/Lessons/Filters.vue";
 
 definePageMeta({
   layout: "console",
 });
 
+// Use Database types
+type LessonRow = Database["public"]["Tables"]["lessons"]["Row"];
+type ClassLessonRow = Database["public"]["Tables"]["class_lessons"]["Row"];
+
+// Update the Lesson interface to match the API response
 interface Lesson {
-  id: number;
+  id: string;
   title: string;
-  description?: string;
+  description: string;
   duration: number;
+  video_url: string;
+  thumbnail_url: string | null;
+  is_hidden: boolean;
+  created_at: string;
   classId: number;
   className: string;
   thumbnailUrl?: string;
-  videoUrl: string;
   createdAt: string;
+  class_lessons?: Array<{
+    classes: {
+      name: string
+    }
+    class_id: number
+  }>
 }
 
 // Store & Utilities
 const sidebarStore = useSidebarStore();
 const isMobile = ref(isMobileScreen());
+const { getAllLessons, loading, error } = useLesson();
+const { getClasses, getActiveClasses } = useClasses();
 
 // State
 const router = useRouter();
 const lessons = ref<Lesson[]>([]);
-const loading = ref(true);
+const classes = ref<Class[]>([]); // Add proper type for classes
 const isAddModalOpen = ref(false);
 const isEditing = ref(false);
-const currentLesson = ref<Lesson | null>(null);
+const currentLesson = ref<EditableLesson | undefined>(undefined);
 const page = ref(1);
 const pageSize = 9;
 const showFilters = ref(false);
 
 // Delete confirmation state
 const isDeleteModalOpen = ref(false);
-const lessonToDelete = ref<Lesson | null>(null);
+const lessonToDelete = ref<EditableLesson | undefined>(undefined);
 
 // Filters
-const filters = ref({
+const filters = ref<LessonFilters>({
   search: "",
-  grade: undefined,
-  subject: undefined,
+  classId: undefined,
+  visibility: "ALL",
   dateRange: undefined,
-});
-
-// Load lessons (mock data for now)
-onMounted(async () => {
-  refreshData();
-
-  // Mobile responsive handler
-  if (import.meta.client) {
-    window.addEventListener("resize", () => {
-      isMobile.value = isMobileScreen();
-    });
-  }
 });
 
 // Computed properties
 const filteredLessons = computed(() => {
   return lessons.value.filter((lesson) => {
+    // Search filter
     const matchesSearch =
       !filters.value.search ||
       lesson.title.toLowerCase().includes(filters.value.search.toLowerCase()) ||
-      lesson.description
-        ?.toLowerCase()
-        .includes(filters.value.search.toLowerCase());
+      lesson.description.toLowerCase().includes(filters.value.search.toLowerCase());
 
-    // Additional filters can be added here when we have grade, subject info in lessons model
+    // Class filter - check if any of the lesson's classes match the selected class
+    const matchesClass =
+      filters.value.classId === undefined || 
+      lesson.class_lessons?.some(cl => cl.class_id === filters.value.classId);
 
-    return matchesSearch;
+    // Visibility filter
+    const matchesVisibility =
+      filters.value.visibility === 'ALL' || 
+      (filters.value.visibility === 'HIDDEN' ? lesson.is_hidden : !lesson.is_hidden);
+
+    // Date range filter
+    const matchesDate =
+      !filters.value.dateRange ||
+      isWithinDateRange(lesson.created_at, filters.value.dateRange);
+
+    return matchesSearch && matchesClass && matchesVisibility && matchesDate;
   });
 });
 
-const paginatedLessons = computed(() => {
-  return filteredLessons.value.slice(
-    (page.value - 1) * pageSize,
-    page.value * pageSize
-  );
-});
-
+// Computed properties for grid layout and pagination
 const gridClass = computed(() => {
-  if (!sidebarStore.isOpen) {
-    return "grid-cols-1 sm:grid-cols-2 xl:grid-cols-3";
-  }
-  return "grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3";
+  // Base responsive grid that works independently of sidebar
+  const baseGrid = "grid-cols-1 sm:grid-cols-2";
+  
+  // Only adjust grid on large screens based on sidebar state
+  const largeScreenGrid = sidebarStore.isOpen
+    ? "xl:grid-cols-2"
+    : "lg:grid-cols-2 xl:grid-cols-3";
+
+  return `${baseGrid} ${largeScreenGrid}`;
 });
 
-// Action handlers
-const refreshData = async () => {
-  try {
-    loading.value = true;
-    // Simulate API call
-    setTimeout(() => {
-      lessons.value = [
-        {
-          id: 1,
-          title: "Introduction to Acids and Bases",
-          description:
-            "Learn the fundamentals of acids and bases in chemistry.",
-          duration: 45,
-          classId: 2,
-          className: "Chemistry Class B",
-          thumbnailUrl: undefined, // Testing undefined thumbnail
-          videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-          createdAt: "2025-02-15T10:30:00",
-        },
-        {
-          id: 2,
-          title: "Force and Motion - Newton's Laws",
-          description:
-            "Comprehensive overview of Newton's three laws of motion",
-          duration: 60,
-          classId: 1,
-          className: "Physics Class A",
-          thumbnailUrl: "https://invalid-image-url.jpg", // Testing invalid thumbnail
-          videoUrl: "https://www.youtube.com/watch?v=L-Wtlv6E7zs",
-          createdAt: "2025-02-22T14:00:00",
-        },
-        {
-          id: 3,
-          title: "Cell Structure and Function",
-          description: "Explore the basic unit of life - the cell.",
-          duration: 55,
-          classId: 3,
-          className: "Biology Class C",
-          thumbnailUrl: "/images/sample-thumbnail.webp",
-          videoUrl: "https://www.youtube.com/watch?v=8IlzKri08kk",
-          createdAt: "2025-04-01T09:15:00",
-        },
-      ];
-      loading.value = false;
-    }, 1000);
-  } catch (error) {
-    console.error("Error loading lessons:", error);
-    loading.value = false;
+const paginatedLessons = computed(() => {
+  const start = (page.value - 1) * pageSize;
+  const end = start + pageSize;
+  return filteredLessons.value.slice(start, end);
+});
+
+// Add type for edit-data and lesson props
+type EditableLesson = Omit<Lesson, "id" | "created_at"> & { id?: string };
+
+// Date range helper function
+const isWithinDateRange = (date: string, range: string) => {
+  const lessonDate = new Date(date);
+  const now = new Date();
+  
+  switch (range) {
+    case '7d':
+      return isDateInRange(lessonDate, 7);
+    case '30d':
+      return isDateInRange(lessonDate, 30);
+    case '90d':
+      return isDateInRange(lessonDate, 90);
+    default:
+      return true;
   }
 };
 
-const handleAddOrUpdateLesson = (lesson: Lesson) => {
-  if (isEditing.value && currentLesson.value) {
-    // Update existing lesson
-    const index = lessons.value.findIndex(
-      (l) => l.id === currentLesson.value!.id
-    );
-    if (index !== -1) {
-      lessons.value[index] = { ...lesson, id: currentLesson.value.id };
+const isDateInRange = (date: Date, days: number) => {
+  const now = new Date();
+  const rangeDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+  return date >= rangeDate;
+};
+
+// Load lessons from Supabase with proper field mapping
+const refreshData = async () => {
+  try {
+    const lessonsData = await getAllLessons();
+    lessons.value = lessonsData.map((lesson) => ({
+      ...lesson,
+      thumbnailUrl: lesson.thumbnail_url || undefined,
+      createdAt: lesson.created_at,
+    }));
+  } catch (error) {
+    console.error("Error loading lessons:", error);
+    useNotification().showError("Failed to load lessons");
+  }
+};
+
+// Load active classes for filters
+const loadClasses = async () => {
+  try {
+    const activeClasses = await getActiveClasses();
+    classes.value = activeClasses;
+  } catch (error) {
+    console.error("Error loading classes:", error);
+    useNotification().showError("Failed to load classes");
+  }
+};
+
+// Initial data load
+onMounted(() => {
+  refreshData();
+  loadClasses();
+});
+
+// Update handlers to work with Supabase
+const handleAddOrUpdateLesson = async (
+  lesson: Omit<Lesson, "id" | "created_at">
+) => {
+  try {
+    if (isEditing.value && currentLesson.value?.id) {
+      // Update existing lesson
+      const { error: updateError } = await useSupabaseClient<Database>()
+        .from("lessons")
+        .update({
+          title: lesson.title,
+          description: lesson.description,
+          duration: lesson.duration,
+          video_url: lesson.video_url,
+          thumbnail_url: lesson.thumbnail_url,
+          is_hidden: false,
+        })
+        .eq("id", BigInt(currentLesson.value.id));
+
+      if (updateError) throw updateError;
+
+      // Update class_lessons if class changed
+      if (lesson.classId !== currentLesson.value.classId) {
+        const { error: classLessonError } = await useSupabaseClient<Database>()
+          .from("class_lessons")
+          .update({ class_id: lesson.classId })
+          .eq("lesson_id", BigInt(currentLesson.value.id));
+
+        if (classLessonError) throw classLessonError;
+      }
+
+      useNotification().showSuccess("Lesson updated successfully");
+    } else {
+      // Add new lesson
+      const { data: newLesson, error: insertError } =
+        await useSupabaseClient<Database>()
+          .from("lessons")
+          .insert({
+            title: lesson.title,
+            description: lesson.description,
+            duration: lesson.duration,
+            video_url: lesson.video_url,
+            thumbnail_url: lesson.thumbnail_url,
+            is_hidden: false,
+          })
+          .select()
+          .single();
+
+      if (insertError || !newLesson) throw insertError;
+
+      // Create class_lessons association
+      const { error: classLessonError } = await useSupabaseClient<Database>()
+        .from("class_lessons")
+        .insert({
+          class_id: lesson.classId,
+          lesson_id: newLesson.id,
+        });
+
+      if (classLessonError) throw classLessonError;
+
+      useNotification().showSuccess("Lesson created successfully");
     }
 
-    // Reset editing state
+    // Refresh data and reset state
+    await refreshData();
     isEditing.value = false;
-    currentLesson.value = null;
-  } else {
-    // Add new lesson with a generated ID
-    const newId = Math.max(0, ...lessons.value.map((l) => l.id)) + 1;
-    lessons.value.push({
-      ...lesson,
-      id: newId,
-      createdAt: new Date().toISOString(),
-    });
+    currentLesson.value = undefined;
+    isAddModalOpen.value = false;
+  } catch (error) {
+    console.error("Error saving lesson:", error);
+    useNotification().showError("Failed to save lesson");
   }
-
-  // Close modal
-  isAddModalOpen.value = false;
 };
 
 const handleEditLesson = (lesson: Lesson) => {
@@ -354,18 +436,54 @@ const handleDeleteLesson = (lesson: Lesson) => {
   isDeleteModalOpen.value = true;
 };
 
-const confirmDeleteLesson = (lesson: Lesson) => {
-  // Remove the lesson from array
-  lessons.value = lessons.value.filter((l) => l.id !== lesson.id);
+const confirmDeleteLesson = async (lesson: Lesson) => {
+  try {
+    // First delete class_lessons associations
+    const { error: classLessonError } = await useSupabaseClient<Database>()
+      .from("class_lessons")
+      .delete()
+      .eq("lesson_id", BigInt(lesson.id));
 
-  // Show success notification
-  useNotification().showSuccess("Lesson deleted successfully");
+    if (classLessonError) throw classLessonError;
 
-  // Reset state
-  lessonToDelete.value = null;
+    // Then delete the lesson
+    const { error: lessonError } = await useSupabaseClient<Database>()
+      .from("lessons")
+      .delete()
+      .eq("id", BigInt(lesson.id));
+
+    if (lessonError) throw lessonError;
+
+    useNotification().showSuccess("Lesson deleted successfully");
+    await refreshData();
+  } catch (error) {
+    console.error("Error deleting lesson:", error);
+    useNotification().showError("Failed to delete lesson");
+  } finally {
+    lessonToDelete.value = undefined;
+    isDeleteModalOpen.value = false;
+  }
 };
 
 const navigateToLesson = (lesson: Lesson) => {
   router.push(`/console/lessons/${lesson.id}`);
+};
+
+const handleVisibilityChange = async (lesson: Lesson) => {
+  try {
+    // Update the local lessons array with the new visibility state
+    lessons.value = lessons.value.map(l => 
+      l.id === lesson.id ? { ...l, is_hidden: lesson.is_hidden } : l
+    );
+    
+    useNotification().showSuccess(
+      lesson.is_hidden 
+        ? 'Lesson has been hidden'
+        : 'Lesson is now visible'
+    );
+  } catch (error) {
+    console.error('Error updating lesson visibility:', error);
+    useNotification().showError('Failed to update lesson visibility');
+  }
 };
 </script>
