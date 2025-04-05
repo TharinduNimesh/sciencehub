@@ -11,7 +11,7 @@
             <USkeleton class="h-6 w-48" />
             <USkeleton class="h-4 w-64" />
           </div>
-          <USkeleton class="h-8 w-20 rounded-full" />
+          <USkeleton class="h-8 w-20 rounded-lg shadow-sm" />
         </div>
       </div>
 
@@ -23,24 +23,12 @@
           class="bg-white p-4 rounded-lg border border-gray-200 shadow-sm"
         >
           <div class="flex items-center space-x-4">
-            <USkeleton class="h-12 w-12 rounded-full" />
+            <USkeleton class="h-12 w-12 rounded-lg shadow-sm" />
             <div class="space-y-2">
               <USkeleton class="h-4 w-20" />
               <USkeleton class="h-6 w-16" />
             </div>
           </div>
-        </div>
-      </div>
-
-      <!-- Skeleton Charts -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div
-          v-for="i in 2"
-          :key="`chart-${i}`"
-          class="bg-white p-6 rounded-lg border border-gray-200 shadow-sm"
-        >
-          <USkeleton class="h-4 w-32 mb-4" />
-          <USkeleton class="h-64 w-full" />
         </div>
       </div>
 
@@ -144,20 +132,8 @@
           </UCard>
         </div>
 
-        <!-- Admin Charts -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <UCard>
-            <StudentEnrollmentChart />
-          </UCard>
-          <UCard>
-            <RevenueOverviewChart />
-          </UCard>
-        </div>
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <UCard class="lg:col-span-1">
-            <GradeDistributionChart />
-          </UCard>
-          <UCard class="lg:col-span-2">
+          <UCard class="lg:col-span-3">
             <!-- Upcoming Classes Table -->
             <h3 class="font-semibold mb-4">Upcoming Classes</h3>
             <div class="overflow-x-auto">
@@ -186,7 +162,7 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <UCard>
             <div class="flex items-center space-x-4">
-              <div class="bg-violet-100 p-3 rounded-full">
+              <div class="bg-violet-100 p-3 rounded-lg shadow-sm">
                 <UIcon
                   name="i-heroicons-academic-cap"
                   class="text-violet-500 w-6 h-6"
@@ -202,7 +178,7 @@
           </UCard>
           <UCard>
             <div class="flex items-center space-x-4">
-              <div class="bg-blue-100 p-3 rounded-full">
+              <div class="bg-blue-100 p-3 rounded-lg shadow-sm">
                 <UIcon name="i-heroicons-users" class="text-blue-500 w-6 h-6" />
               </div>
               <div>
@@ -215,7 +191,7 @@
           </UCard>
           <UCard>
             <div class="flex items-center space-x-4">
-              <div class="bg-teal-100 p-3 rounded-full">
+              <div class="bg-teal-100 p-3 rounded-lg shadow-sm">
                 <UIcon
                   name="i-heroicons-book-open"
                   class="text-teal-500 w-6 h-6"
@@ -231,15 +207,6 @@
           </UCard>
         </div>
 
-        <!-- Moderator Charts -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <UCard>
-            <ClassPerformanceChart />
-          </UCard>
-          <UCard>
-            <StudentActivityChart />
-          </UCard>
-        </div>
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <UCard class="lg:col-span-1">
             <!-- Student Activity Feed -->
@@ -292,93 +259,56 @@
 
       <!-- Student Dashboard -->
       <div v-else-if="isStudent" class="space-y-6">
-        <!-- Student Stats Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- Student dashboard grid layout -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <UCard>
-            <div class="flex items-center space-x-4">
-              <div class="bg-violet-100 p-3 rounded-full">
-                <UIcon
-                  name="i-heroicons-academic-cap"
-                  class="text-violet-500 w-6 h-6"
-                />
-              </div>
-              <div>
-                <div class="text-sm text-gray-500">Enrolled Classes</div>
-                <div class="text-2xl font-semibold">
-                  {{ studentStats.enrolledClasses }}
+            <!-- Upcoming Classes -->
+            <div class="flex items-center space-x-2 mb-4">
+              <UIcon
+                name="i-heroicons-calendar"
+                class="text-blue-600 w-5 h-5"
+              />
+              <h3 class="font-semibold text-lg">Upcoming Classes</h3>
+            </div>
+            <div class="space-y-3">
+              <div
+                v-for="(classItem, index) in upcomingClasses.slice(0, 4)"
+                :key="index"
+                class="p-3 rounded-lg border border-gray-200 flex items-center justify-between"
+              >
+                <div>
+                  <h4 class="font-medium text-gray-900">
+                    {{ classItem.name }}
+                  </h4>
+                  <p class="text-sm text-gray-500">
+                    Grade {{ classItem.grade }}
+                  </p>
                 </div>
+                <div class="text-right">
+                  <p class="font-medium text-blue-600">{{ classItem.time }}</p>
+                  <p class="text-sm text-gray-500">
+                    {{ classItem.students }} students
+                  </p>
+                </div>
+              </div>
+              <div
+                v-if="upcomingClasses.length === 0"
+                class="text-center text-gray-500 py-4"
+              >
+                No upcoming classes scheduled
               </div>
             </div>
           </UCard>
-          <UCard>
-            <div class="flex items-center space-x-4">
-              <div class="bg-green-100 p-3 rounded-full">
-                <UIcon
-                  name="i-heroicons-check-badge"
-                  class="text-green-500 w-6 h-6"
-                />
-              </div>
-              <div>
-                <div class="text-sm text-gray-500">Attendance Rate</div>
-                <div class="text-2xl font-semibold">
-                  {{ studentStats.attendanceRate }}%
-                </div>
-              </div>
-            </div>
-          </UCard>
-          <UCard>
-            <div class="flex items-center space-x-4">
-              <div class="bg-amber-100 p-3 rounded-full">
-                <UIcon
-                  name="i-heroicons-document-check"
-                  class="text-amber-500 w-6 h-6"
-                />
-              </div>
-              <div>
-                <div class="text-sm text-gray-500">Completed Quizzes</div>
-                <div class="text-2xl font-semibold">
-                  {{ studentStats.completedQuizzes }}
-                </div>
-              </div>
-            </div>
-          </UCard>
-        </div>
 
-        <!-- Student Charts -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <UCard>
-            <ProgressChart />
-          </UCard>
-          <UCard>
-            <SubjectPerformanceChart />
-          </UCard>
-        </div>
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <UCard>
-            <!-- Enrolled Classes Table -->
-            <h3 class="font-semibold mb-4">Your Classes</h3>
-            <div class="overflow-x-auto">
-              <UTable :columns="studentClassColumns" :rows="classes">
-                <template #name-data="{ row }">
-                  {{ row.name }}
-                </template>
-                <template #grade-data="{ row }">
-                  Grade {{ row.grade }}
-                </template>
-                <template #teacher-data="{ row }">
-                  {{ row.teacher }}
-                </template>
-                <template #status-data="{ row }">
-                  <UBadge :color="row.active ? 'green' : 'gray'" size="sm">
-                    {{ row.active ? "Active" : "Inactive" }}
-                  </UBadge>
-                </template>
-              </UTable>
+            <!-- Latest Lessons -->
+            <div class="flex items-center space-x-2 mb-4">
+              <UIcon
+                name="i-heroicons-book-open"
+                class="text-violet-600 w-5 h-5"
+              />
+              <h3 class="font-semibold text-lg">Latest Lessons</h3>
             </div>
-          </UCard>
-          <UCard>
-            <!-- Upcoming Lessons -->
-            <h3 class="font-semibold mb-4">Upcoming Lessons</h3>
             <div class="space-y-3">
               <div
                 v-for="(lesson, index) in upcomingLessons"
@@ -398,7 +328,95 @@
                 v-if="upcomingLessons.length === 0"
                 class="text-center text-gray-500 py-4"
               >
-                No upcoming lessons scheduled
+                No recent lessons available
+              </div>
+            </div>
+          </UCard>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <UCard>
+            <!-- Latest Learning Materials -->
+            <div class="flex items-center space-x-2 mb-4">
+              <UIcon
+                name="i-heroicons-document-text"
+                class="text-teal-600 w-5 h-5"
+              />
+              <h3 class="font-semibold text-lg">Latest Learning Materials</h3>
+            </div>
+            <div class="space-y-3">
+              <!-- Placeholder for learning materials -->
+              <!-- This will be populated with actual data from backend -->
+              <div
+                v-for="i in 4"
+                :key="i"
+                class="p-3 rounded-lg border border-gray-200 flex items-center space-x-3"
+              >
+                <UIcon
+                  :name="
+                    [
+                      'i-heroicons-document-text',
+                      'i-heroicons-video-camera',
+                      'i-heroicons-photo',
+                      'i-heroicons-document-chart-bar',
+                    ][i % 4]
+                  "
+                  class="text-gray-500 w-5 h-5"
+                />
+                <div class="flex-1">
+                  <h4 class="font-medium text-gray-900">
+                    Learning Material {{ i }}
+                  </h4>
+                  <p class="text-sm text-gray-500">Subject {{ i }}</p>
+                </div>
+                <UButton size="sm" color="gray" variant="soft">View</UButton>
+              </div>
+              <div class="text-center">
+                <UButton size="sm" color="gray" variant="ghost"
+                  >View All Materials</UButton
+                >
+              </div>
+            </div>
+          </UCard>
+
+          <UCard>
+            <!-- Notices -->
+            <div class="flex items-center space-x-2 mb-4">
+              <UIcon name="i-heroicons-bell" class="text-amber-600 w-5 h-5" />
+              <h3 class="font-semibold text-lg">Notices</h3>
+            </div>
+            <div class="space-y-3">
+              <!-- Placeholder for notices -->
+              <!-- This will be populated with actual data from backend -->
+              <div
+                v-for="i in 4"
+                :key="i"
+                class="p-3 rounded-lg border border-gray-200"
+              >
+                <div class="flex items-center justify-between mb-2">
+                  <h4 class="font-medium text-gray-900">
+                    Notice Title {{ i }}
+                  </h4>
+                  <UBadge
+                    :color="['amber', 'blue', 'green', 'purple'][i % 4]"
+                    size="sm"
+                    >{{
+                      ["Important", "Info", "Update", "Alert"][i % 4]
+                    }}</UBadge
+                  >
+                </div>
+                <p class="text-sm text-gray-600 mb-2">
+                  This is a sample notice description that would contain
+                  important information for students.
+                </p>
+                <p class="text-xs text-gray-500">
+                  {{ i }} day{{ i > 1 ? "s" : "" }} ago
+                </p>
+              </div>
+              <div class="text-center">
+                <UButton size="sm" color="gray" variant="ghost"
+                  >View All Notices</UButton
+                >
               </div>
             </div>
           </UCard>
@@ -417,19 +435,6 @@
 import { useDashboard } from "~/composables/useDashboard";
 import { onMounted, computed } from "vue";
 import { useAuthStore } from "~/stores/auth";
-
-// Admin chart components
-import StudentEnrollmentChart from "~/components/Common/Charts/Admin/StudentEnrollmentChart.vue";
-import RevenueOverviewChart from "~/components/Common/Charts/Admin/RevenueOverviewChart.vue";
-import GradeDistributionChart from "~/components/Common/Charts/Admin/GradeDistributionChart.vue";
-
-// Moderator chart components
-import ClassPerformanceChart from "~/components/Common/Charts/Moderator/ClassPerformanceChart.vue";
-import StudentActivityChart from "~/components/Common/Charts/Moderator/StudentActivityChart.vue";
-
-// Student chart components
-import ProgressChart from "~/components/Common/Charts/Student/ProgressChart.vue";
-import SubjectPerformanceChart from "~/components/Common/Charts/Student/SubjectPerformanceChart.vue";
 
 // Set page meta
 definePageMeta({
