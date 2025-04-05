@@ -1,42 +1,13 @@
+import type { Lesson, CreateLessonData, LessonRow, LessonResource } from '~/types/lesson'
 import type { Database } from '~/types/supabase'
 
-export interface CreateLessonData {
-  title: string
-  description: string
-  duration: number
-  videoUrl: string
-  thumbnailUrl: string | null
-  classIds: number[]  // Changed from classId to classIds to support multiple classes
-  resources: {
-    type: string
-    name: string
-    url: string
-  }[]
-}
-
-export interface Lesson {
-  id: string // Changed from number to string to match the component
-  title: string
-  description: string
-  duration: number
-  video_url: string
-  thumbnail_url: string | null
-  created_at: string
-  is_hidden: boolean
-  class_lessons?: {
-    class_id: number
-    classes: {
-      name: string
-    }
-  }[]
-}
-
-export interface LessonResource {
-  id: number
-  type: string
-  url: string
-  lesson_id: number
-  created_at: string
+interface ClassLesson {
+  class_id: number;
+  classes: {
+    id: number;
+    name: string;
+    grade: string;
+  };
 }
 
 export const useLesson = () => {
@@ -80,6 +51,7 @@ export const useLesson = () => {
       if (data.resources && data.resources.length > 0) {
         const resources = data.resources.map(resource => ({
           type: resource.type,
+          name: resource.name,
           url: resource.url,
           lesson_id: lessonData.id
         }))
@@ -151,8 +123,8 @@ export const useLesson = () => {
 
   const getAllLessons = async () => {
     try {
-      loading.value = true
-      error.value = null
+      loading.value = true;
+      error.value = null;
 
       const { data, error: err } = await supabase
         .from('lessons')
@@ -161,28 +133,41 @@ export const useLesson = () => {
           class_lessons (
             class_id,
             classes (
-              name
+              id,
+              name,
+              grade
             )
           )
         `)
-        .order('created_at', { ascending: false })
+        .order('created_at', { ascending: false });
 
-      if (err) throw err
+      if (err) throw err;
 
-      // Transform data to match the expected interface
       return data?.map(lesson => ({
         ...lesson,
         id: lesson.id.toString(),
-        classId: lesson.class_lessons?.[0]?.class_id ?? 0,
-        className: lesson.class_lessons?.[0]?.classes?.name ?? 'Unknown Class',
-      })) ?? []
+        classId: lesson.class_lessons?.map((cl: { class_id: number }) => cl.class_id) || [],
+        className: formatClassNames(lesson.class_lessons || []),
+      })) ?? [] as Lesson[];
     } catch (err) {
-      error.value = err as Error
-      throw err
+      error.value = err as Error;
+      throw err;
     } finally {
-      loading.value = false
+      loading.value = false;
     }
-  }
+  };
+
+  // Helper function to format class names with count
+  const formatClassNames = (classLessons: ClassLesson[]) => {
+    if (!classLessons.length) return 'No Class';
+    const firstClass = classLessons[0];
+    if (!firstClass?.classes) return 'No Class';
+    
+    if (classLessons.length === 1) {
+      return `Grade ${firstClass.classes.grade} | ${firstClass.classes.name}`;
+    }
+    return `Grade ${firstClass.classes.grade} | ${firstClass.classes.name} and ${classLessons.length - 1} more`;
+  };
 
   const hideLesson = async (lessonId: number) => {
     try {
@@ -205,8 +190,96 @@ export const useLesson = () => {
     }
   }
 
+  const updateLesson = async (data: { 
+    id: string;
+    title: string;
+    description: string;
+    duration: number;
+    videoUrl: string;
+    thumbnailUrl: string | null;
+    classIds: number[];
+    resources: {
+      type: string;
+      name: string;
+      url: string;
+    }[];
+  }) => {
+    try {
+      loading.value = true
+      error.value = null
+
+      // 1. Update the lesson basic info
+      const { error: lessonError } = await supabase
+        .from('lessons')
+        .update({
+          title: data.title,
+          description: data.description,
+          duration: data.duration,
+          video_url: data.videoUrl,
+          thumbnail_url: data.thumbnailUrl
+        })
+        .eq('id', data.id)
+
+      if (lessonError) throw lessonError
+
+      // 2. Update class associations
+      // First delete existing associations
+      const { error: deleteClassError } = await supabase
+        .from('class_lessons')
+        .delete()
+        .eq('lesson_id', data.id)
+
+      if (deleteClassError) throw deleteClassError
+
+      // Then create new associations
+      const classLessonData = data.classIds.map(classId => ({
+        class_id: classId,
+        lesson_id: data.id
+      }))
+
+      const { error: classLessonError } = await supabase
+        .from('class_lessons')
+        .insert(classLessonData)
+
+      if (classLessonError) throw classLessonError
+
+      // 3. Update resources
+      // First delete existing resources
+      const { error: deleteResourcesError } = await supabase
+        .from('lesson_resources')
+        .delete()
+        .eq('lesson_id', data.id)
+
+      if (deleteResourcesError) throw deleteResourcesError
+
+      // Then create new resources
+      if (data.resources && data.resources.length > 0) {
+        const resources = data.resources.map(resource => ({
+          type: resource.type,
+          name: resource.name,
+          url: resource.url,
+          lesson_id: data.id
+        }))
+
+        const { error: resourcesError } = await supabase
+          .from('lesson_resources')
+          .insert(resources)
+
+        if (resourcesError) throw resourcesError
+      }
+
+      return true
+    } catch (err) {
+      error.value = err as Error
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     createLesson,
+    updateLesson,
     getLessonById,
     getLessonResources,
     getLessonsByClassId,

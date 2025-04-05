@@ -26,7 +26,7 @@
               </h4>
               <UBadge
                 :color="getResourceColor(resource.type)"
-                variant="subtle"
+                variant="soft"
                 size="xs"
                 class="hidden sm:inline-flex"
               >

@@ -22,10 +22,10 @@
           <h3
             class="text-lg font-semibold leading-6 text-gray-900 dark:text-white"
           >
-            Add New Lesson
+            Edit Lesson
           </h3>
           <p class="text-sm text-gray-500 dark:text-gray-400">
-            Create a new lesson recording or resource
+            Update lesson details and resources
           </p>
         </div>
         <UButton
@@ -211,8 +211,8 @@
             (form.videoUrl && !videoDetails?.videoId) ||
             isLoadingVideo
           "
-          :label="'Add Lesson'"
-          :icon="'i-heroicons-plus'"
+          label="Update Lesson"
+          icon="i-heroicons-arrow-path"
           @click="handleSubmit"
         />
       </div>
@@ -221,11 +221,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onUnmounted, onMounted } from "vue";
+import { ref, computed, watch, nextTick } from "vue";
 import { useYouTubeVideo } from "~/composables/useYouTubeVideo";
 import { useLesson } from "~/composables/useLesson";
 import { useClasses } from "~/composables/useClasses";
 import ResourceSummary from "./ResourceSummary.vue";
+import type { Lesson, EditableLesson, CreateLessonData } from '~/types/lesson'
 
 // Define resource type interface
 interface Resource {
@@ -234,14 +235,15 @@ interface Resource {
   url: string;
 }
 
-const props = defineProps({
-  modelValue: {
-    type: Boolean,
-    required: true,
-  },
-});
+const props = defineProps<{
+  modelValue: boolean;
+  lesson: Lesson;
+}>();
 
-const emit = defineEmits(["update:model-value", "created"]);
+const emit = defineEmits<{
+  'update:model-value': [value: boolean];
+  updated: [lesson: Lesson];
+}>();
 
 const isSubmitting = ref(false);
 
@@ -260,13 +262,13 @@ const {
 } = useYouTubeVideo();
 
 // Use the Lesson composable
-const { createLesson, loading: savingLesson } = useLesson();
+const { updateLesson, getLessonResources } = useLesson();
 
 // Form interface
 interface LessonForm {
   title: string;
   description: string;
-  classId: number[]; // Changed to array of numbers for multiple selection
+  classId: number[];
   videoUrl: string;
   thumbnailUrl: string;
   duration: string;
@@ -277,7 +279,7 @@ interface LessonForm {
 const form = ref<LessonForm>({
   title: "",
   description: "",
-  classId: [], // Initialize as empty array
+  classId: [],
   videoUrl: "",
   thumbnailUrl: "",
   duration: "00:00",
@@ -294,14 +296,14 @@ const resourceTypeOptions = [
 
 // Class options state
 const classOptions = ref<{ id: number; name: string }[]>([]);
-const { getActiveClasses, loading: loadingClasses } = useClasses();
+const { getActiveClasses } = useClasses();
 
 // Load classes when component mounts
 onMounted(async () => {
   try {
     const classes = await getActiveClasses();
     classOptions.value = classes.map((c) => ({
-      id: Number(c.id), // Ensure id is a number
+      id: Number(c.id),
       name: `${c.name} - Grade ${c.grade}`,
     }));
   } catch (error) {
@@ -351,6 +353,33 @@ const removeResource = (index: number) => {
   form.value.resources.splice(index, 1);
 };
 
+// Load existing resources when the modal opens
+const loadExistingResources = async (lessonId: string) => {
+  try {
+    const resources = await getLessonResources(Number(lessonId));
+    if (resources) {
+      form.value.resources = resources.map(r => ({
+        type: r.type,
+        name: r.name || getDefaultName(r.type, r.url),
+        url: r.url
+      }));
+    }
+  } catch (error) {
+    console.error('Error loading resources:', error);
+    useToast().add({
+      title: 'Error',
+      description: 'Failed to load lesson resources',
+      color: 'red'
+    });
+  }
+};
+
+// Helper to generate a default name if none exists
+const getDefaultName = (type: string, url: string) => {
+  const filename = url.split('/').pop() || '';
+  return `${type.charAt(0).toUpperCase() + type.slice(1)} ${filename}`;
+};
+
 // Load video information handler
 const loadVideoInfo = async () => {
   if (!form.value.videoUrl) {
@@ -390,17 +419,26 @@ const loadVideoInfo = async () => {
 // Reset or populate form when modal opens/closes
 watch(
   () => props.modelValue,
-  (newModelValue) => {
-    if (newModelValue) {
+  async (newModelValue) => {
+    if (newModelValue && props.lesson) {
+      // Extract all class IDs from class_lessons
+      const classIds = props.lesson.class_lessons 
+        ? props.lesson.class_lessons.map(cl => cl.class_id)
+        : [];
+
+      // Populate form with lesson data
       form.value = {
-        title: "",
-        description: "",
-        classId: [],
-        videoUrl: "",
-        thumbnailUrl: "",
-        duration: "00:00",
-        resources: [],
+        title: props.lesson.title,
+        description: props.lesson.description || "",
+        classId: classIds, // Now contains array of all class IDs
+        videoUrl: props.lesson.video_url,
+        thumbnailUrl: props.lesson.thumbnail_url || "",
+        duration: String(props.lesson.duration),
+        resources: []
       };
+
+      // Load existing resources
+      await loadExistingResources(props.lesson.id);
     }
   },
   { immediate: true }
@@ -433,7 +471,8 @@ const handleSubmit = async () => {
       (resource) => resource.type && resource.name && resource.url
     );
 
-    await createLesson({
+    await updateLesson({
+      id: props.lesson.id,
       title: form.value.title,
       description: form.value.description,
       duration: parseInt(form.value.duration),
@@ -443,34 +482,46 @@ const handleSubmit = async () => {
       resources: validResources,
     });
 
+    // Update toast message
     useToast().add({
       title: "Success",
-      description: "Lesson created successfully",
+      description: "Lesson updated successfully",
       color: "green",
     });
 
-    emit("update:model-value", false);
-    emit("created");
+    // Emit the updated event with the updated lesson data
+    emit("updated", {
+      ...props.lesson,
+      title: form.value.title,
+      description: form.value.description,
+      duration: parseInt(form.value.duration),
+      video_url: form.value.videoUrl,
+      thumbnail_url: form.value.thumbnailUrl,
+    });
 
-    // Reset form
-    form.value = {
-      title: "",
-      description: "",
-      classId: [],
-      videoUrl: "",
-      thumbnailUrl: "",
-      duration: "00:00",
-      resources: [],
-    };
+    // Close the modal
+    emit("update:model-value", false);
   } catch (error) {
-    console.error("Error creating lesson:", error);
+    console.error("Error updating lesson:", error);
     useToast().add({
       title: "Error",
-      description: "Failed to create lesson. Please try again.",
+      description: "Failed to update lesson. Please try again.",
       color: "red",
     });
   } finally {
     isSubmitting.value = false;
   }
+};
+
+// Add the formatClassNames helper function
+const formatClassNames = (classLessons: { classes: { name: string; grade: string } }[]) => {
+  if (!classLessons.length) return 'No Class';
+  const firstClass = classLessons[0];
+  if (!firstClass?.classes?.grade || !firstClass?.classes?.name) return 'No Class';
+  
+  if (classLessons.length === 1) {
+    return `Grade ${firstClass.classes.grade} | ${firstClass.classes.name}`;
+  }
+  return `Grade ${firstClass.classes.grade} | ${firstClass.classes.name} and ${classLessons.length - 1} more`;
 };
 </script>

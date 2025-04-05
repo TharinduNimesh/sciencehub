@@ -1,7 +1,16 @@
 <template>
-  <div class="relative rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden h-full flex flex-col bg-white group">
+  <div
+    class="relative rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden h-full flex flex-col bg-white group"
+  >
     <!-- Background Pattern -->
-    <div class="absolute inset-0 overflow-hidden" :class="lesson.is_hidden ? 'opacity-30 text-yellow-200' : 'opacity-30 text-purple-200'">
+    <div
+      class="absolute inset-0 overflow-hidden"
+      :class="
+        lesson.is_hidden
+          ? 'opacity-30 text-yellow-200'
+          : 'opacity-30 text-purple-200'
+      "
+    >
       <!-- Top-right amoeba -->
       <svg
         class="absolute -right-32 -top-32 w-96 h-96 animate-float-slow"
@@ -53,7 +62,9 @@
             class="w-full h-64 object-cover transition-transform duration-300 group-hover:scale-105"
             @error="handleImageError"
           />
-          <div class="absolute inset-0 bg-gradient-to-t from-purple-200/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+          <div
+            class="absolute inset-0 bg-gradient-to-t from-purple-200/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+          >
             <div class="w-full h-full flex items-center justify-center">
               <UButton
                 size="lg"
@@ -68,8 +79,13 @@
 
       <div class="flex-1 space-y-4">
         <div class="flex items-center justify-between mb-2">
-          <UBadge color="purple" variant="soft" size="sm" class="font-medium">
-            {{ lesson.className }}
+          <UBadge
+            :color="lesson.is_hidden ? 'yellow' : 'purple'"
+            variant="soft"
+            size="sm"
+            class="font-medium"
+          >
+            {{ classDisplay }}
           </UBadge>
           <div class="flex items-center gap-2 text-gray-500">
             <UIcon name="i-heroicons-clock" size="sm" />
@@ -77,8 +93,13 @@
           </div>
         </div>
 
-        <NuxtLink :to="`/console/lessons/${lesson.id}`" class="block group/title">
-          <h3 class="font-semibold text-lg mb-2 line-clamp-2 text-gray-900 group-hover/title:text-gray-600 transition-colors">
+        <NuxtLink
+          :to="`/console/lessons/${lesson.id}`"
+          class="block group/title"
+        >
+          <h3
+            class="font-semibold text-lg mb-2 line-clamp-2 text-gray-900 group-hover/title:text-gray-600 transition-colors"
+          >
             {{ lesson.title }}
           </h3>
         </NuxtLink>
@@ -88,7 +109,9 @@
         </p>
       </div>
 
-      <div class="flex justify-between items-center pt-4 border-t border-gray-100">
+      <div
+        class="flex justify-between items-center pt-4 border-t border-gray-100"
+      >
         <div class="text-xs text-gray-500 flex items-center gap-2">
           <UIcon name="i-heroicons-calendar" size="lg" />
           Created {{ formatDate(lesson.createdAt) }}
@@ -102,7 +125,7 @@
               variant="soft"
               icon="i-heroicons-pencil-square"
               :ui="{ rounded: 'rounded-full' }"
-              @click="$emit('edit', lesson)"
+              @click="showEditModal = true"
               square
             />
           </UTooltip>
@@ -111,7 +134,9 @@
               size="sm"
               color="yellow"
               variant="soft"
-              :icon="lesson.is_hidden ? 'i-heroicons-eye' : 'i-heroicons-eye-slash'"
+              :icon="
+                lesson.is_hidden ? 'i-heroicons-eye' : 'i-heroicons-eye-slash'
+              "
               :ui="{ rounded: 'rounded-full' }"
               @click="showHideConfirmation = true"
               square
@@ -125,34 +150,30 @@
     <ConfirmationDialog
       v-model="showHideConfirmation"
       :title="lesson.is_hidden ? 'Unhide Lesson' : 'Hide Lesson'"
-      :description="lesson.is_hidden 
-        ? 'This lesson will be visible to everyone in the assigned classes. Are you sure you want to unhide this lesson?' 
-        : 'This lesson will not be shown to anyone in the assigned classes. Are you sure you want to hide this lesson?'"
+      :description="
+        lesson.is_hidden
+          ? 'This lesson will be visible to everyone in the assigned classes. Are you sure you want to unhide this lesson?'
+          : 'This lesson will not be shown to anyone in the assigned classes. Are you sure you want to hide this lesson?'
+      "
       type="warning"
       :confirm-text="lesson.is_hidden ? 'Unhide Lesson' : 'Hide Lesson'"
       @confirm="handleHideLesson"
+    />
+
+    <!-- Edit Modal -->
+    <EditModal
+      v-model="showEditModal"
+      :lesson="lesson"
+      @updated="handleEditLesson"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import ConfirmationDialog from '~/components/Common/ConfirmationDialog.vue';
-import type { Database } from '~/types/supabase';
-
-interface Lesson {
-  id: string;
-  title: string;
-  description: string;
-  duration: number;
-  video_url: string;
-  thumbnail_url: string | null;
-  is_hidden: boolean;
-  created_at: string;
-  classId: number;
-  className: string;
-  thumbnailUrl?: string;
-  createdAt: string;
-}
+import ConfirmationDialog from "~/components/Common/ConfirmationDialog.vue";
+import EditModal from "./EditModal.vue";
+import type { Lesson } from "~/types/lesson";
+import type { Database } from "~/types/supabase";
 
 const props = defineProps<{
   lesson: Lesson;
@@ -166,30 +187,36 @@ const emit = defineEmits<{
 }>();
 
 const showHideConfirmation = ref(false);
+const showEditModal = ref(false);
 const { hideLesson } = useLesson();
 
 const handleHideLesson = async () => {
   try {
     const supabase = useSupabaseClient<Database>();
     const { error } = await supabase
-      .from('lessons')
+      .from("lessons")
       .update({ is_hidden: !props.lesson.is_hidden })
-      .eq('id', props.lesson.id);
+      .eq("id", props.lesson.id);
 
     if (error) throw error;
-    
+
     showHideConfirmation.value = false;
     emit("hide", { ...props.lesson, is_hidden: !props.lesson.is_hidden });
-    
+
     useNotification().showSuccess(
-      !props.lesson.is_hidden 
-        ? 'Lesson has been hidden'
-        : 'Lesson is now visible'
+      !props.lesson.is_hidden
+        ? "Lesson has been hidden"
+        : "Lesson is now visible"
     );
   } catch (error) {
     console.error("Error updating lesson visibility:", error);
     useNotification().showError("Failed to update lesson visibility");
   }
+};
+
+const handleEditLesson = (updatedLesson: Lesson) => {
+  showEditModal.value = false;
+  emit("edit", updatedLesson);
 };
 
 // Format duration (minutes) to readable format
@@ -203,8 +230,9 @@ const formatDuration = (minutes: number): string => {
   return `${mins} min`;
 };
 
-// Add formatDate function
-const formatDate = (date: string) => {
+// Update formatDate to handle optional createdAt
+const formatDate = (date: string | undefined) => {
+  if (!date) return '';
   return new Date(date).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
@@ -226,7 +254,21 @@ const thumbnailUrl = computed(() => {
   return props.lesson.thumbnailUrl;
 });
 
-// Add error handler for image load failures
+// Add computed property for class display
+const classDisplay = computed(() => {
+  if (!props.lesson.class_lessons?.length) return "No Class";
+  
+  const firstClass = props.lesson.class_lessons[0];
+  if (!firstClass?.classes) return "No Class";
+  
+  if (props.lesson.class_lessons.length === 1) {
+    return `Grade ${firstClass.classes.grade} | ${firstClass.classes.name}`;
+  }
+  
+  return `Grade ${firstClass.classes.grade} | ${firstClass.classes.name} and ${props.lesson.class_lessons.length - 1} more`;
+});
+
+// Add error handler for images
 const handleImageError = (event: Event) => {
   const imgElement = event.target as HTMLImageElement;
   imgElement.src = defaultThumbnail;

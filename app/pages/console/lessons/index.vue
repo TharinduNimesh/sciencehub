@@ -163,9 +163,7 @@
     <!-- Add/Edit Lesson Modal -->
     <ConsoleLessonsAddModal
       v-model="isAddModalOpen"
-      :is-editing="isEditing"
-      :edit-data="currentLesson"
-      @add="handleAddOrUpdateLesson"
+      @created="handleAddOrUpdateLesson"
     />
 
     <!-- Delete Lesson Modal -->
@@ -184,38 +182,19 @@ import { useSidebarStore } from "~/stores/sidebar";
 import { isMobileScreen } from "~/lib/utils";
 import { useLesson } from "~/composables/useLesson";
 import { useClasses } from "~/composables/useClasses";
+import type { Lesson, EditableLesson } from "~/types/lesson";
 import type { Database } from "~/types/supabase";
-import type { LessonFilters } from "~/components/Console/Lessons/Filters.vue";
+
+interface LessonFilters {
+  search: string;
+  classId?: number;
+  visibility: "ALL" | "HIDDEN" | "VISIBLE";
+  dateRange?: string;
+}
 
 definePageMeta({
   layout: "console",
 });
-
-// Use Database types
-type LessonRow = Database["public"]["Tables"]["lessons"]["Row"];
-type ClassLessonRow = Database["public"]["Tables"]["class_lessons"]["Row"];
-
-// Update the Lesson interface to match the API response
-interface Lesson {
-  id: string;
-  title: string;
-  description: string;
-  duration: number;
-  video_url: string;
-  thumbnail_url: string | null;
-  is_hidden: boolean;
-  created_at: string;
-  classId: number;
-  className: string;
-  thumbnailUrl?: string;
-  createdAt: string;
-  class_lessons?: Array<{
-    classes: {
-      name: string
-    }
-    class_id: number
-  }>
-}
 
 // Store & Utilities
 const sidebarStore = useSidebarStore();
@@ -226,12 +205,12 @@ const { getClasses, getActiveClasses } = useClasses();
 // State
 const router = useRouter();
 const lessons = ref<Lesson[]>([]);
-const classes = ref<Class[]>([]); // Add proper type for classes
+const classes = ref<{ id: number; name: string; grade: string }[]>([]);
 const isAddModalOpen = ref(false);
 const isEditing = ref(false);
 const currentLesson = ref<EditableLesson | undefined>(undefined);
 const page = ref(1);
-const pageSize = 9;
+const pageSize = 6;
 const showFilters = ref(false);
 
 // Delete confirmation state
@@ -293,9 +272,6 @@ const paginatedLessons = computed(() => {
   return filteredLessons.value.slice(start, end);
 });
 
-// Add type for edit-data and lesson props
-type EditableLesson = Omit<Lesson, "id" | "created_at"> & { id?: string };
-
 // Date range helper function
 const isWithinDateRange = (date: string, range: string) => {
   const lessonDate = new Date(date);
@@ -327,6 +303,8 @@ const refreshData = async () => {
       ...lesson,
       thumbnailUrl: lesson.thumbnail_url || undefined,
       createdAt: lesson.created_at,
+      className: lesson.className || 'No Class', // Ensure className is always set
+      classId: lesson.class_lessons?.map((cl: { class_id: number }) => cl.class_id) || []
     }));
   } catch (error) {
     console.error("Error loading lessons:", error);
@@ -338,7 +316,10 @@ const refreshData = async () => {
 const loadClasses = async () => {
   try {
     const activeClasses = await getActiveClasses();
-    classes.value = activeClasses;
+    classes.value = activeClasses.map(cls => ({
+      ...cls,
+      grade: String(cls.grade)  // Convert grade to string
+    }));
   } catch (error) {
     console.error("Error loading classes:", error);
     useNotification().showError("Failed to load classes");
@@ -352,83 +333,13 @@ onMounted(() => {
 });
 
 // Update handlers to work with Supabase
-const handleAddOrUpdateLesson = async (
-  lesson: Omit<Lesson, "id" | "created_at">
-) => {
-  try {
-    if (isEditing.value && currentLesson.value?.id) {
-      // Update existing lesson
-      const { error: updateError } = await useSupabaseClient<Database>()
-        .from("lessons")
-        .update({
-          title: lesson.title,
-          description: lesson.description,
-          duration: lesson.duration,
-          video_url: lesson.video_url,
-          thumbnail_url: lesson.thumbnail_url,
-          is_hidden: false,
-        })
-        .eq("id", BigInt(currentLesson.value.id));
-
-      if (updateError) throw updateError;
-
-      // Update class_lessons if class changed
-      if (lesson.classId !== currentLesson.value.classId) {
-        const { error: classLessonError } = await useSupabaseClient<Database>()
-          .from("class_lessons")
-          .update({ class_id: lesson.classId })
-          .eq("lesson_id", BigInt(currentLesson.value.id));
-
-        if (classLessonError) throw classLessonError;
-      }
-
-      useNotification().showSuccess("Lesson updated successfully");
-    } else {
-      // Add new lesson
-      const { data: newLesson, error: insertError } =
-        await useSupabaseClient<Database>()
-          .from("lessons")
-          .insert({
-            title: lesson.title,
-            description: lesson.description,
-            duration: lesson.duration,
-            video_url: lesson.video_url,
-            thumbnail_url: lesson.thumbnail_url,
-            is_hidden: false,
-          })
-          .select()
-          .single();
-
-      if (insertError || !newLesson) throw insertError;
-
-      // Create class_lessons association
-      const { error: classLessonError } = await useSupabaseClient<Database>()
-        .from("class_lessons")
-        .insert({
-          class_id: lesson.classId,
-          lesson_id: newLesson.id,
-        });
-
-      if (classLessonError) throw classLessonError;
-
-      useNotification().showSuccess("Lesson created successfully");
-    }
-
-    // Refresh data and reset state
-    await refreshData();
-    isEditing.value = false;
-    currentLesson.value = undefined;
-    isAddModalOpen.value = false;
-  } catch (error) {
-    console.error("Error saving lesson:", error);
-    useNotification().showError("Failed to save lesson");
-  }
+const handleAddOrUpdateLesson = async () => {
+  await refreshData();
+  isAddModalOpen.value = false;
 };
 
-const handleEditLesson = (lesson: Lesson) => {
-  currentLesson.value = { ...lesson };
-  isEditing.value = true;
-  isAddModalOpen.value = true;
+const handleEditLesson = async (lesson: Lesson) => {
+  await refreshData(); // Refresh data after edit
 };
 
 const handleDeleteLesson = (lesson: Lesson) => {
