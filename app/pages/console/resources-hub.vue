@@ -1,323 +1,89 @@
 <template>
   <div class="h-full space-y-8">
     <!-- Notices Section -->
-    <div v-if="isAdmin() || isModerator()" class="bg-white rounded-lg shadow-sm">
-      <div class="p-6 lg:p-8 space-y-6">
-        <!-- Header Section -->
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h2 class="text-xl font-semibold">Notices</h2>
-            <p class="text-sm text-gray-500 mt-1">Important announcements and updates</p>
-          </div>
-
-          <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-            <div class="flex gap-2 w-full">
-              <UButton
-                icon="i-heroicons-arrow-path"
-                :ui="{ rounded: 'rounded-full' }"
-                :loading="isRefreshingNotices"
-                color="gray"
-                variant="ghost"
-                @click="refreshNotices"
-                square
-              />
-              <div class="flex-1">
-                <UButton 
-                  icon="i-heroicons-funnel" 
-                  :ui="{ rounded: 'rounded-full' }" 
-                  :color="showNoticeFilters ? 'primary' : 'gray'"
-                  :variant="showNoticeFilters ? 'soft' : 'ghost'" 
-                  :block="true"
-                  @click="showNoticeFilters = !showNoticeFilters"
-                  label="Filters" 
-                />
-              </div>
-            </div>
-            <UButton 
-              label="Create Notice" 
-              color="primary" 
-              icon="i-heroicons-plus" 
-              :ui="{ rounded: 'rounded-full' }"
-              :block="isMobile" 
-              @click="isCreateNoticeModalOpen = true" 
-            />
-          </div>
-        </div>
-
-        <!-- Filters -->
+    <ResourceSection
+      v-if="isAdmin() || isModerator()"
+      title="Notices"
+      description="Important announcements and updates"
+      action-label="Create Notice"
+      :is-refreshing="isRefreshingNotices"
+      v-model:show-filters="showNoticeFilters"
+      v-model:current-page="noticeCurrentPage"
+      :items-per-page="adminItemsPerPage"
+      :total-items="filteredNotices.length"
+      item-label="notices"
+      @refresh="refreshNotices"
+      @action="isCreateNoticeModalOpen = true"
+    >
+      <!-- Notice Filters -->
+      <template #filters>
         <ConsoleNoticesFilters 
           v-show="showNoticeFilters" 
           :filters="noticeFilters"
           @update:filters="updateNoticeFilters" 
           class="transition-all duration-200 ease-in-out"
         />
+      </template>
 
-        <!-- Notice Cards -->
-        <div v-if="paginatedNotices.length" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <UCard v-for="notice in paginatedNotices" :key="notice.id" class="cursor-pointer hover:shadow-md transition-shadow">
-            <div class="space-y-4">
-              <div class="flex items-start justify-between">
-                <div>
-                  <h3 class="text-lg font-semibold">{{ notice.title }}</h3>
-                  <p class="text-sm text-gray-500">{{ formatDate(notice.createdAt) }}</p>
-                </div>
-                <UDropdown :items="getNoticeActions(notice)">
-                  <UButton
-                    color="gray"
-                    variant="ghost"
-                    icon="i-heroicons-ellipsis-horizontal"
-                    :ui="{ rounded: 'rounded-full' }"
-                  />
-                </UDropdown>
-              </div>
-              <p class="text-gray-600">{{ notice.description }}</p>
-              <div v-if="notice.image" class="mt-4">
-                <img :src="notice.image" :alt="notice.title" class="rounded-lg w-full object-cover h-48">
-              </div>
-              <div class="flex flex-wrap gap-2">
-                <UBadge v-for="className in notice.classes" :key="className" color="primary" variant="soft" size="sm">
-                  {{ className }}
-                </UBadge>
-              </div>
-            </div>
-          </UCard>
-        </div>
-        <div v-else class="text-center py-12">
-          <UIcon name="i-heroicons-document-text" class="w-12 h-12 mx-auto text-gray-400" />
-          <h3 class="mt-2 text-sm font-semibold text-gray-900">No notices</h3>
-          <p class="mt-1 text-sm text-gray-500">Get started by creating a new notice.</p>
-        </div>
-
-        <!-- Pagination Controls -->
-        <div v-if="filteredNotices.length > 0" class="bg-white px-4 py-3 border-t border-gray-100">
-          <div class="flex items-center justify-between">
-            <div class="text-sm text-gray-500">
-              Showing {{ ((noticeCurrentPage - 1) * adminItemsPerPage) + 1 }} to {{ Math.min(noticeCurrentPage * adminItemsPerPage, filteredNotices.length) }} of {{ filteredNotices.length }} notices
-            </div>
-            <div class="flex gap-2">
-              <UButton
-                :disabled="noticeCurrentPage === 1"
-                @click="noticeCurrentPage--"
-                color="gray"
-                variant="soft"
-                icon="i-heroicons-chevron-left"
-                :ui="{ rounded: 'rounded-full' }"
-                square
-              />
-              <div class="flex items-center gap-1">
-                <template v-for="page in totalNoticePages" :key="page">
-                  <UButton
-                    v-if="page === noticeCurrentPage || page === 1 || page === totalNoticePages || (page >= noticeCurrentPage - 1 && page <= noticeCurrentPage + 1)"
-                    :color="page === noticeCurrentPage ? 'primary' : 'gray'"
-                    :variant="page === noticeCurrentPage ? 'solid' : 'soft'"
-                    :ui="{ rounded: 'rounded-full' }"
-                    @click="noticeCurrentPage = page"
-                    class="min-w-[32px]"
-                  >
-                    {{ page }}
-                  </UButton>
-                  <span v-else-if="page === noticeCurrentPage - 2 || page === noticeCurrentPage + 2" class="px-1">...</span>
-                </template>
-              </div>
-              <UButton
-                :disabled="noticeCurrentPage === totalNoticePages"
-                @click="noticeCurrentPage++"
-                color="gray"
-                variant="soft"
-                icon="i-heroicons-chevron-right"
-                :ui="{ rounded: 'rounded-full' }"
-                square
-              />
-            </div>
-          </div>
-        </div>
+      <!-- Notice Cards -->
+      <div v-if="paginatedNotices.length" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <NoticeCard
+          v-for="notice in paginatedNotices"
+          :key="notice.id"
+          :notice="notice"
+          @edit="handleEditNotice"
+          @delete="handleDeleteNotice"
+        />
       </div>
-    </div>
+      <div v-else class="text-center py-12">
+        <UIcon name="i-heroicons-document-text" class="w-12 h-12 mx-auto text-gray-400" />
+        <h3 class="mt-2 text-sm font-semibold text-gray-900">No notices</h3>
+        <p class="mt-1 text-sm text-gray-500">Get started by creating a new notice.</p>
+      </div>
+    </ResourceSection>
 
     <!-- Notes Section -->
-    <div v-if="isAdmin() || isModerator()" class="bg-white rounded-lg shadow-sm">
-      <div class="p-6 lg:p-8 space-y-6">
-        <!-- Header Section -->
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h2 class="text-xl font-semibold">Learning Notes</h2>
-            <p class="text-sm text-gray-500 mt-1">Educational resources and materials</p>
-          </div>
-
-          <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-            <div class="flex gap-2 w-full">
-              <UButton
-                icon="i-heroicons-arrow-path"
-                :ui="{ rounded: 'rounded-full' }"
-                :loading="isRefreshingNotes"
-                color="gray"
-                variant="ghost"
-                @click="refreshNotes"
-                square
-              />
-              <div class="flex-1">
-                <UButton 
-                  icon="i-heroicons-funnel" 
-                  :ui="{ rounded: 'rounded-full' }" 
-                  :color="showNoteFilters ? 'primary' : 'gray'"
-                  :variant="showNoteFilters ? 'soft' : 'ghost'" 
-                  :block="true"
-                  @click="showNoteFilters = !showNoteFilters"
-                  label="Filters" 
-                />
-              </div>
-            </div>
-            <UButton 
-              label="Add Note" 
-              color="primary" 
-              icon="i-heroicons-plus" 
-              :ui="{ rounded: 'rounded-full' }"
-              :block="isMobile" 
-              @click="isCreateNoteModalOpen = true" 
-            />
-          </div>
-        </div>
-
-        <!-- Filters -->
+    <ResourceSection
+      v-if="isAdmin() || isModerator()"
+      title="Learning Notes"
+      description="Educational resources and materials"
+      action-label="Add Note"
+      :is-refreshing="isRefreshingNotes"
+      v-model:show-filters="showNoteFilters"
+      v-model:current-page="noteCurrentPage"
+      :items-per-page="adminItemsPerPage"
+      :total-items="filteredNotes.length"
+      item-label="notes"
+      @refresh="refreshNotes"
+      @action="isCreateNoteModalOpen = true"
+    >
+      <!-- Note Filters -->
+      <template #filters>
         <ConsoleNotesFilters 
           v-show="showNoteFilters" 
           :filters="noteFilters"
           @update:filters="updateNoteFilters" 
           class="transition-all duration-200 ease-in-out"
         />
+      </template>
 
-        <!-- Note Cards -->
-        <div v-if="paginatedNotes.length" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <UCard 
-            v-for="note in paginatedNotes" 
-            :key="note.id" 
-            class="group transition-all duration-200 hover:shadow-lg hover:border-primary-100 relative overflow-hidden"
-          >
-            <!-- Resource Type Badge -->
-            <div class="absolute top-4 right-4">
-              <UBadge
-                :color="getResourceTypeColor(note.type)"
-                variant="solid"
-                size="sm"
-                class="flex items-center gap-1.5"
-              >
-                <UIcon :name="getResourceTypeIcon(note.type)" class="w-4 h-4" />
-                {{ note.type }}
-              </UBadge>
-            </div>
-
-            <div class="space-y-4">
-              <!-- Header -->
-              <div class="flex items-start justify-between">
-                <div class="pr-20"> <!-- Added padding to prevent overlap with badge -->
-                  <h3 class="text-lg font-semibold group-hover:text-primary-600 transition-colors">{{ note.title }}</h3>
-                  <p class="text-sm text-gray-500">{{ formatDate(note.createdAt) }}</p>
-                </div>
-                <UDropdown 
-                  :items="getNoteActions(note)"
-                  :popper="{ placement: 'bottom-end' }"
-                >
-                  <UButton
-                    color="gray"
-                    variant="ghost"
-                    icon="i-heroicons-ellipsis-horizontal"
-                    :ui="{ rounded: 'rounded-full' }"
-                    class="opacity-0 group-hover:opacity-100 transition-opacity"
-                  />
-                </UDropdown>
-              </div>
-
-              <!-- Description with truncation -->
-              <p class="text-gray-600 line-clamp-2">{{ note.description }}</p>
-
-              <!-- Classes -->
-              <div class="flex flex-wrap gap-2 mb-4">
-                <UBadge 
-                  v-for="className in note.classes" 
-                  :key="className" 
-                  :color="getClassBadgeColor(className)"
-                  variant="outline" 
-                  size="xs"
-                  class="group-hover:border-primary-200 transition-colors font-medium"
-                >
-                  {{ formatClassName(className) }}
-                </UBadge>
-              </div>
-
-              <!-- Action Button -->
-              <div class="pt-4 mt-auto border-t border-gray-100">
-                <UButton
-                  :color="getResourceActionColor(note.type)"
-                  :variant="getResourceActionVariant(note.type)"
-                  :icon="getResourceActionIcon(note.type)"
-                  size="sm"
-                  class="w-full text-sm font-medium group"
-                  :class="getResourceActionClass(note.type)"
-                  @click="handleResourceAction(note)"
-                >
-                  <span class="flex items-center gap-2 justify-center">
-                    {{ getResourceActionLabel(note.type) }}
-                    <UIcon 
-                      name="i-heroicons-arrow-right" 
-                      class="w-4 h-4 transition-transform group-hover:translate-x-0.5" 
-                    />
-                  </span>
-                </UButton>
-              </div>
-            </div>
-          </UCard>
-        </div>
-        <div v-else class="text-center py-12">
-          <UIcon name="i-heroicons-book-open" class="w-12 h-12 mx-auto text-gray-400" />
-          <h3 class="mt-2 text-sm font-semibold text-gray-900">No notes</h3>
-          <p class="mt-1 text-sm text-gray-500">Get started by adding a new note.</p>
-        </div>
-
-        <!-- Pagination Controls -->
-        <div v-if="filteredNotes.length > 0" class="bg-white px-4 py-3 border-t border-gray-100">
-          <div class="flex items-center justify-between">
-            <div class="text-sm text-gray-500">
-              Showing {{ ((noteCurrentPage - 1) * adminItemsPerPage) + 1 }} to {{ Math.min(noteCurrentPage * adminItemsPerPage, filteredNotes.length) }} of {{ filteredNotes.length }} notes
-            </div>
-            <div class="flex gap-2">
-              <UButton
-                :disabled="noteCurrentPage === 1"
-                @click="noteCurrentPage--"
-                color="gray"
-                variant="soft"
-                icon="i-heroicons-chevron-left"
-                :ui="{ rounded: 'rounded-full' }"
-                square
-              />
-              <div class="flex items-center gap-1">
-                <template v-for="page in totalNotePages" :key="page">
-                  <UButton
-                    v-if="page === noteCurrentPage || page === 1 || page === totalNotePages || (page >= noteCurrentPage - 1 && page <= noteCurrentPage + 1)"
-                    :color="page === noteCurrentPage ? 'primary' : 'gray'"
-                    :variant="page === noteCurrentPage ? 'solid' : 'soft'"
-                    :ui="{ rounded: 'rounded-full' }"
-                    @click="noteCurrentPage = page"
-                    class="min-w-[32px]"
-                  >
-                    {{ page }}
-                  </UButton>
-                  <span v-else-if="page === noteCurrentPage - 2 || page === noteCurrentPage + 2" class="px-1">...</span>
-                </template>
-              </div>
-              <UButton
-                :disabled="noteCurrentPage === totalNotePages"
-                @click="noteCurrentPage++"
-                color="gray"
-                variant="soft"
-                icon="i-heroicons-chevron-right"
-                :ui="{ rounded: 'rounded-full' }"
-                square
-              />
-            </div>
-          </div>
-        </div>
+      <!-- Note Cards -->
+      <div v-if="paginatedNotes.length" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <NoteCard
+          v-for="note in paginatedNotes"
+          :key="note.id"
+          :note="note"
+          @view="handleViewNote"
+          @edit="handleEditNote"
+          @delete="handleDeleteNote"
+        />
       </div>
-    </div>
+      <div v-else class="text-center py-12">
+        <UIcon name="i-heroicons-book-open" class="w-12 h-12 mx-auto text-gray-400" />
+        <h3 class="mt-2 text-sm font-semibold text-gray-900">No notes</h3>
+        <p class="mt-1 text-sm text-gray-500">Get started by adding a new note.</p>
+      </div>
+    </ResourceSection>
 
     <!-- Student Resources Section -->
     <div v-if="isStudent()" class="bg-white rounded-lg shadow-sm">
@@ -350,131 +116,52 @@
         </div>
 
         <!-- Combined Resources List -->
-        <div class="border border-gray-100 rounded-xl overflow-hidden">
-          <div class="bg-gray-50 px-4 py-3 border-b border-gray-100">
-            <div class="flex items-center justify-between">
-              <h3 class="font-medium">All Resources</h3>
-              <UBadge color="primary" variant="soft" size="sm">{{ filteredStudentResources.length }}</UBadge>
-            </div>
-          </div>
-          <div class="divide-y divide-gray-100">
-            <div v-for="resource in paginatedStudentResources" :key="resource.id" 
-              class="p-4 hover:bg-gray-50 transition-colors cursor-pointer"
-              @click="resource.type ? handleResourceAction(resource) : viewNoticeDetails(resource)"
-            >
-              <div class="flex items-start gap-4">
-                <div class="flex-shrink-0">
-                  <UAvatar
-                    v-if="!resource.type"
-                    :src="resource.image"
-                    :alt="resource.title"
-                    size="lg"
-                  />
-                  <UIcon 
-                    v-else
-                    :name="getResourceTypeIcon(resource.type)" 
-                    class="w-10 h-10"
-                    :class="getResourceTypeIconClass(resource.type)"
-                  />
-                </div>
-                <div class="flex-1 min-w-0">
-                  <div class="flex items-start justify-between gap-2">
-                    <div>
-                      <h4 class="font-medium text-gray-900">{{ resource.title }}</h4>
-                      <p class="text-sm text-gray-500">{{ formatDate(resource.createdAt) }}</p>
-                    </div>
-                    <UBadge
-                      v-if="resource.type"
-                      :color="getResourceTypeColor(resource.type)"
-                      variant="soft"
-                      size="sm"
-                      class="flex items-center gap-1"
-                    >
-                      <UIcon :name="getResourceTypeIcon(resource.type)" class="w-4 h-4" />
-                      {{ resource.type }}
-                    </UBadge>
-                    <UBadge
-                      v-else
-                      color="amber"
-                      variant="soft"
-                      size="sm"
-                      class="flex items-center gap-1"
-                    >
-                      <UIcon name="i-heroicons-bell-alert" class="w-4 h-4" />
-                      Notice
-                    </UBadge>
-                  </div>
-                  <p class="mt-1 text-sm text-gray-600 line-clamp-2">{{ resource.description }}</p>
-                  <div class="mt-2 flex items-center gap-4">
-                    <div class="flex flex-wrap gap-2">
-                      <UBadge v-for="className in resource.classes" :key="className" 
-                        :color="getClassBadgeColor(className)" 
-                        variant="soft" 
-                        size="xs"
-                      >
-                        {{ formatClassName(className) }}
-                      </UBadge>
-                    </div>
-                    <UButton
-                      v-if="resource.type"
-                      :color="getResourceTypeColor(resource.type)"
-                      variant="soft"
-                      size="xs"
-                      :icon="getResourceActionIcon(resource.type)"
-                      class="ml-auto"
-                    >
-                      {{ getResourceActionLabel(resource.type) }}
-                    </UButton>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div v-if="!filteredStudentResources.length" class="p-4 text-center text-gray-500">
-              No resources available
-            </div>
-          </div>
+        <StudentResourceList
+          :resources="paginatedStudentResources"
+          @resource-action="handleResourceAction"
+          @notice-view="viewNoticeDetails"
+        />
 
-          <!-- Pagination Controls -->
-          <div v-if="filteredStudentResources.length > 0" class="bg-white px-4 py-3 border-t border-gray-100">
-            <div class="flex items-center justify-between">
-              <div class="text-sm text-gray-500">
-                Showing {{ ((currentPage - 1) * itemsPerPage) + 1 }} to {{ Math.min(currentPage * itemsPerPage, filteredStudentResources.length) }} of {{ filteredStudentResources.length }} resources
+        <!-- Pagination -->
+        <div v-if="filteredStudentResources.length > 0" class="bg-white px-4 py-3 border-t border-gray-100">
+          <div class="flex items-center justify-between">
+            <div class="text-sm text-gray-500">
+              Showing {{ ((currentPage - 1) * itemsPerPage) + 1 }} to {{ Math.min(currentPage * itemsPerPage, filteredStudentResources.length) }} of {{ filteredStudentResources.length }} resources
+            </div>
+            <div class="flex gap-2">
+              <UButton
+                :disabled="currentPage === 1"
+                @click="currentPage--"
+                color="gray"
+                variant="soft"
+                icon="i-heroicons-chevron-left"
+                :ui="{ rounded: 'rounded-full' }"
+                square
+              />
+              <div class="flex items-center gap-1">
+                <template v-for="page in totalPages" :key="page">
+                  <UButton
+                    v-if="page === currentPage || page === 1 || page === totalPages || (page >= currentPage - 1 && page <= currentPage + 1)"
+                    :color="page === currentPage ? 'primary' : 'gray'"
+                    :variant="page === currentPage ? 'solid' : 'soft'"
+                    :ui="{ rounded: 'rounded-full' }"
+                    @click="currentPage = page"
+                    class="min-w-[32px]"
+                  >
+                    {{ page }}
+                  </UButton>
+                  <span v-else-if="page === currentPage - 2 || page === currentPage + 2" class="px-1">...</span>
+                </template>
               </div>
-              <div class="flex gap-2">
-                <UButton
-                  :disabled="currentPage === 1"
-                  @click="currentPage--"
-                  color="gray"
-                  variant="soft"
-                  icon="i-heroicons-chevron-left"
-                  :ui="{ rounded: 'rounded-full' }"
-                  square
-                />
-                <div class="flex items-center gap-1">
-                  <template v-for="page in totalPages" :key="page">
-                    <UButton
-                      v-if="page === currentPage || page === 1 || page === totalPages || (page >= currentPage - 1 && page <= currentPage + 1)"
-                      :color="page === currentPage ? 'primary' : 'gray'"
-                      :variant="page === currentPage ? 'solid' : 'soft'"
-                      :ui="{ rounded: 'rounded-full' }"
-                      @click="currentPage = page"
-                      class="min-w-[32px]"
-                    >
-                      {{ page }}
-                    </UButton>
-                    <span v-else-if="page === currentPage - 2 || page === currentPage + 2" class="px-1">...</span>
-                  </template>
-                </div>
-                <UButton
-                  :disabled="currentPage === totalPages"
-                  @click="currentPage++"
-                  color="gray"
-                  variant="soft"
-                  icon="i-heroicons-chevron-right"
-                  :ui="{ rounded: 'rounded-full' }"
-                  square
-                />
-              </div>
+              <UButton
+                :disabled="currentPage === totalPages"
+                @click="currentPage++"
+                color="gray"
+                variant="soft"
+                icon="i-heroicons-chevron-right"
+                :ui="{ rounded: 'rounded-full' }"
+                square
+              />
             </div>
           </div>
         </div>
@@ -499,6 +186,10 @@
 import { ref, computed } from 'vue'
 import { isMobileScreen } from '~/lib/utils'
 import { useNotification } from '~/composables/useNotification'
+import ResourceSection from '~/components/Console/Resources/ResourceSection.vue'
+import NoticeCard from '~/components/Console/Resources/NoticeCard.vue'
+import NoteCard from '~/components/Console/Resources/NoteCard.vue'
+import StudentResourceList from '~/components/Console/Resources/StudentResourceList.vue'
 
 // Page meta
 definePageMeta({
@@ -705,7 +396,7 @@ const notices = ref([
     description: 'Updated schedule for the upcoming holiday period.',
     createdAt: '2024-03-30T14:30:00',
     classes: ['All Classes'],
-    image: 'https://images.unsplash.com/photo-1506784365847-bbad939e9335?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&h=400'
+    image: 'https://images.unsplash.com/photo-1506784365847-bbad939e9335?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8MHx8&auto=format&fit=crop&w=800&h=400'
   },
   {
     id: 3,
@@ -848,41 +539,24 @@ const handleResourceAction = (note: any) => {
   }
 }
 
-const getNoticeActions = (notice: any) => {
-  return [
-    [{
-      label: 'Edit',
-      icon: 'i-heroicons-pencil-square',
-      click: () => console.log('Edit notice:', notice.id)
-    }],
-    [{
-      label: 'Delete',
-      icon: 'i-heroicons-trash',
-      color: 'red',
-      click: () => console.log('Delete notice:', notice.id)
-    }]
-  ]
+const handleEditNotice = (notice: any) => {
+  console.log('Edit notice:', notice.id)
 }
 
-const getNoteActions = (note: any) => {
-  return [
-    [{
-      label: 'View',
-      icon: 'i-heroicons-eye',
-      click: () => console.log('View note:', note.id)
-    }],
-    [{
-      label: 'Edit',
-      icon: 'i-heroicons-pencil-square',
-      click: () => console.log('Edit note:', note.id)
-    }],
-    [{
-      label: 'Delete',
-      icon: 'i-heroicons-trash',
-      color: 'red',
-      click: () => console.log('Delete note:', note.id)
-    }]
-  ]
+const handleDeleteNotice = (notice: any) => {
+  console.log('Delete notice:', notice.id)
+}
+
+const handleViewNote = (note: any) => {
+  console.log('View note:', note.id)
+}
+
+const handleEditNote = (note: any) => {
+  console.log('Edit note:', note.id)
+}
+
+const handleDeleteNote = (note: any) => {
+  console.log('Delete note:', note.id)
 }
 
 const refreshNotices = async () => {
