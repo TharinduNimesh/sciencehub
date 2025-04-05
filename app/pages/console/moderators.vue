@@ -1,5 +1,6 @@
 <template>
-  <div class="h-full space-y-8">
+  <UnderMaintenance v-if="$config.public.isInMaintenanceMode" />
+  <div class="h-full space-y-8" v-else>
     <!-- Moderators Section -->
     <div class="bg-white rounded-lg shadow-sm">
       <div class="p-6 lg:p-8 space-y-6">
@@ -171,6 +172,7 @@
 import type { Invitation } from '~/types/supabase'
 import type { Moderator } from '~/components/Console/Moderators/Table.vue'
 import { isMobileScreen } from '~/lib/utils'
+import UnderMaintenance from '~/components/Console/UnderMaintenance.vue'
 
 // Page meta
 definePageMeta({ layout: 'console' })

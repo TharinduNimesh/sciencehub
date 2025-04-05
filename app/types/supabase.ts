@@ -109,6 +109,52 @@ export interface Database {
           invited_by?: string | null
         }
       }
+      lessons: {
+        Row: {
+          id: bigint
+          title: string
+          description: string
+          duration: number
+          video_url: string
+          thumbnail_url: string | null
+          created_at: string
+          is_hidden: boolean
+        }
+        Insert: {
+          title: string
+          description: string
+          duration: number
+          video_url: string
+          thumbnail_url?: string | null
+          is_hidden?: boolean
+        }
+      }
+      lesson_resources: {
+        Row: {
+          id: bigint
+          type: string
+          url: string
+          lesson_id: bigint
+          created_at: string
+        }
+        Insert: {
+          type: string
+          url: string
+          lesson_id: bigint
+        }
+      }
+      class_lessons: {
+        Row: {
+          id: bigint
+          class_id: bigint
+          lesson_id: bigint
+          created_at: string
+        }
+        Insert: {
+          class_id: bigint
+          lesson_id: bigint
+        }
+      }
     }
     Views: {
       invitation_details: {
