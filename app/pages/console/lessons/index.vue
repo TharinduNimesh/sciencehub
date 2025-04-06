@@ -35,7 +35,7 @@
               />
             </div>
           </div>
-          <div class="flex-1 sm:flex-initial">
+          <div class="flex-1 sm:flex-initial" v-if="isAdmin()">
             <UButton
               label="Add New Lesson"
               color="primary"
@@ -98,18 +98,21 @@
         class="bg-gray-50 rounded-lg p-12 text-center"
       >
         <div
-          class="mx-auto h-24 w-24 flex items-center justify-center rounded-full bg-gray-100"
+          class="mx-auto h-24 w-24 flex items-center justify-center rounded-full bg-primary-50"
         >
           <UIcon
             name="i-heroicons-video-camera"
-            class="h-12 w-12 text-gray-400"
+            class="h-12 w-12 text-primary-400"
           />
         </div>
         <h3 class="mt-6 text-xl font-medium text-gray-900">No lessons found</h3>
-        <p class="mt-2 text-gray-500">
+        <p v-if="isAdmin()" class="mt-2 text-gray-500">
           Get started by creating a new lesson recording.
         </p>
-        <div class="mt-6">
+        <p v-else-if="isStudent()" class="mt-2 text-gray-500">
+          No lessons are available for you at the moment.
+        </p>
+        <div v-if="isAdmin()" class="mt-6">
           <UButton
             color="primary"
             label="Add New Lesson"
@@ -232,17 +235,21 @@ const filteredLessons = computed(() => {
     const matchesSearch =
       !filters.value.search ||
       lesson.title.toLowerCase().includes(filters.value.search.toLowerCase()) ||
-      lesson.description.toLowerCase().includes(filters.value.search.toLowerCase());
+      lesson.description
+        .toLowerCase()
+        .includes(filters.value.search.toLowerCase());
 
     // Class filter - check if any of the lesson's classes match the selected class
     const matchesClass =
-      filters.value.classId === undefined || 
-      lesson.class_lessons?.some(cl => cl.class_id === filters.value.classId);
+      filters.value.classId === undefined ||
+      lesson.class_lessons?.some((cl) => cl.class_id === filters.value.classId);
 
     // Visibility filter
     const matchesVisibility =
-      filters.value.visibility === 'ALL' || 
-      (filters.value.visibility === 'HIDDEN' ? lesson.is_hidden : !lesson.is_hidden);
+      filters.value.visibility === "ALL" ||
+      (filters.value.visibility === "HIDDEN"
+        ? lesson.is_hidden
+        : !lesson.is_hidden);
 
     // Date range filter
     const matchesDate =
@@ -257,7 +264,7 @@ const filteredLessons = computed(() => {
 const gridClass = computed(() => {
   // Base responsive grid that works independently of sidebar
   const baseGrid = "grid-cols-1 sm:grid-cols-2";
-  
+
   // Only adjust grid on large screens based on sidebar state
   const largeScreenGrid = sidebarStore.isOpen
     ? "xl:grid-cols-2"
@@ -276,13 +283,13 @@ const paginatedLessons = computed(() => {
 const isWithinDateRange = (date: string, range: string) => {
   const lessonDate = new Date(date);
   const now = new Date();
-  
+
   switch (range) {
-    case '7d':
+    case "7d":
       return isDateInRange(lessonDate, 7);
-    case '30d':
+    case "30d":
       return isDateInRange(lessonDate, 30);
-    case '90d':
+    case "90d":
       return isDateInRange(lessonDate, 90);
     default:
       return true;
@@ -303,8 +310,10 @@ const refreshData = async () => {
       ...lesson,
       thumbnailUrl: lesson.thumbnail_url || undefined,
       createdAt: lesson.created_at,
-      className: lesson.className || 'No Class', // Ensure className is always set
-      classId: lesson.class_lessons?.map((cl: { class_id: number }) => cl.class_id) || []
+      className: lesson.className || "No Class", // Ensure className is always set
+      classId:
+        lesson.class_lessons?.map((cl: { class_id: number }) => cl.class_id) ||
+        [],
     }));
   } catch (error) {
     console.error("Error loading lessons:", error);
@@ -316,9 +325,9 @@ const refreshData = async () => {
 const loadClasses = async () => {
   try {
     const activeClasses = await getActiveClasses();
-    classes.value = activeClasses.map(cls => ({
+    classes.value = activeClasses.map((cls) => ({
       ...cls,
-      grade: String(cls.grade)  // Convert grade to string
+      grade: String(cls.grade), // Convert grade to string
     }));
   } catch (error) {
     console.error("Error loading classes:", error);
@@ -383,18 +392,16 @@ const navigateToLesson = (lesson: Lesson) => {
 const handleVisibilityChange = async (lesson: Lesson) => {
   try {
     // Update the local lessons array with the new visibility state
-    lessons.value = lessons.value.map(l => 
+    lessons.value = lessons.value.map((l) =>
       l.id === lesson.id ? { ...l, is_hidden: lesson.is_hidden } : l
     );
-    
+
     useNotification().showSuccess(
-      lesson.is_hidden 
-        ? 'Lesson has been hidden'
-        : 'Lesson is now visible'
+      lesson.is_hidden ? "Lesson has been hidden" : "Lesson is now visible"
     );
   } catch (error) {
-    console.error('Error updating lesson visibility:', error);
-    useNotification().showError('Failed to update lesson visibility');
+    console.error("Error updating lesson visibility:", error);
+    useNotification().showError("Failed to update lesson visibility");
   }
 };
 </script>

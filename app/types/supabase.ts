@@ -155,6 +155,38 @@ export interface Database {
           lesson_id: bigint
         }
       }
+      learning_resources_and_notices: {
+        Row: {
+          id: bigint
+          title: string
+          description: string | null
+          type: 'notice' | 'resource'
+          resource_type: 'Document' | 'Video' | 'Image' | 'Link'
+          url: string
+          created_at: string
+        }
+        Insert: {
+          title: string
+          description?: string | null
+          type: 'notice' | 'resource'
+          resource_type: 'Document' | 'Video' | 'Image' | 'Link'
+          url: string
+          created_at?: string
+        }
+      }
+      class_has_resources: {
+        Row: {
+          id: bigint
+          resource_id: bigint
+          class_id: bigint
+          created_at: string
+        }
+        Insert: {
+          resource_id: bigint
+          class_id: bigint
+          created_at?: string
+        }
+      }
     }
     Views: {
       invitation_details: {

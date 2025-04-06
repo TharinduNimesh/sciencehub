@@ -1,4 +1,21 @@
 <template>
+  <!-- Add confirmation dialog at the top level of the template -->
+  <ConfirmationDialog
+    v-model="showDeleteConfirmation"
+    title="Delete Note"
+    description="Are you sure you want to delete this note? This action cannot be undone."
+    type="danger"
+    confirm-text="Delete"
+    @confirm="confirmDelete"
+  />
+
+  <!-- Add edit modal -->
+  <ConsoleNotesEditModal
+    v-model="isEditModalOpen"
+    :note="note"
+    @updated="emit('edit', note)"
+  />
+  
   <UCard class="group transition-all duration-200 hover:shadow-lg hover:border-primary-100 relative overflow-hidden">
     <div class="space-y-4">
       <!-- Header with Icon -->
@@ -8,15 +25,15 @@
           <div
             class="w-14 h-14 flex items-center justify-center rounded-xl"
             :class="{
-              'bg-blue-50 text-blue-500': note.type === 'Document',
-              'bg-red-50 text-red-500': note.type === 'Video',
-              'bg-green-50 text-green-500': note.type === 'Image',
-              'bg-purple-50 text-purple-500': note.type === 'Link',
-              'bg-gray-50 text-gray-500': !note.type
+              'bg-blue-50 text-blue-500': note.resource_type === 'Document',
+              'bg-red-50 text-red-500': note.resource_type === 'Video',
+              'bg-green-50 text-green-500': note.resource_type === 'Image',
+              'bg-purple-50 text-purple-500': note.resource_type === 'Link',
+              'bg-gray-50 text-gray-500': !note.resource_type
             }"
           >
             <UIcon
-              :name="getResourceTypeIcon(note.type)"
+              :name="getResourceTypeIcon(note.resource_type)"
               class="text-2xl"
             />
           </div>
@@ -35,14 +52,12 @@
       <!-- Classes -->
       <div class="flex flex-wrap gap-2">
         <UBadge 
-          v-for="className in note.classes" 
-          :key="className" 
-          :color="getClassBadgeColor(className)"
-          variant="outline" 
+          color="primary"
+          variant="soft" 
           size="xs"
           class="group-hover:border-primary-200 transition-colors font-medium"
         >
-          {{ formatClassName(className) }}
+          {{ classDisplay }}
         </UBadge>
       </div>
 
@@ -50,16 +65,16 @@
       <div class="pt-4 mt-auto border-t border-gray-100 flex items-center justify-between">
         <!-- Resource Action Button -->
         <UButton
-          :color="getResourceActionColor(note.type)"
+          :color="getResourceActionColor(note.resource_type)"
           :variant="getResourceActionVariant()"
-          :icon="getResourceActionIcon(note.type)"
+          :icon="getResourceActionIcon(note.resource_type)"
           size="sm"
           class="text-sm font-medium group"
-          :class="getResourceActionClass(note.type)"
+          :class="getResourceActionClass(note.resource_type)"
           @click="handleResourceAction(note)"
         >
           <span class="flex items-center gap-2 justify-center">
-            {{ getResourceActionLabel(note.type) }}
+            {{ getResourceActionLabel(note.resource_type) }}
             <UIcon 
               name="i-heroicons-arrow-right" 
               class="w-4 h-4 transition-transform group-hover:translate-x-0.5" 
@@ -76,7 +91,7 @@
               icon="i-heroicons-pencil-square"
               :ui="{ rounded: 'rounded-full' }"
               size="sm"
-              @click="emit('edit', note)"
+              @click="handleEditClick(note)"
             />
           </UTooltip>
           <UTooltip text="Delete note" :popper="{ arrow: true }">
@@ -86,7 +101,7 @@
               icon="i-heroicons-trash"
               :ui="{ rounded: 'rounded-full' }"
               size="sm"
-              @click="emit('delete', note)"
+              @click="handleDeleteClick(note)"
             />
           </UTooltip>
         </div>
@@ -97,25 +112,21 @@
 
 <script setup lang="ts">
 import type { BadgeColor, ButtonColor, ButtonVariant } from '#ui/types'
+import type { Resource, ResourceType } from '~/types/resource'
+import ConfirmationDialog from '~/components/Common/ConfirmationDialog.vue'
 
-interface Note {
-  id: number
-  title: string
-  description: string
-  type: string
-  createdAt: string
-  classes: string[]
-  url: string
-}
+const showDeleteConfirmation = ref(false)
+const noteToDelete = ref<Resource | null>(null)
+const isEditModalOpen = ref(false)
 
 const props = defineProps<{
-  note: Note
+  note: Resource
 }>()
 
 const emit = defineEmits<{
-  (e: 'view', note: Note): void
-  (e: 'edit', note: Note): void
-  (e: 'delete', note: Note): void
+  (e: 'view', note: Resource): void
+  (e: 'edit', note: Resource): void
+  (e: 'delete', note: Resource): void
 }>()
 
 const formatDate = (dateString: string) => {
@@ -136,77 +147,100 @@ const formatClassName = (className: string): string => {
   return className
 }
 
-const getClassBadgeColor = (className: string): BadgeColor => {
-  if (className.includes('Physics')) return 'blue'
-  if (className.includes('Chemistry')) return 'green'
-  if (className.includes('Biology')) return 'yellow'
-  if (className.includes('Mathematics')) return 'purple'
-  return 'gray'
-}
+// Add computed property for class display
+const classDisplay = computed(() => {
+  if (!props.note.classes?.length) return 'No Class'
+  
+  const firstClass = props.note.classes[0]
+  if (!firstClass) return 'No Class'
+  
+  if (props.note.classes.length === 1) {
+    return formatClassName(firstClass)
+  }
+  
+  return `${formatClassName(firstClass)} and ${props.note.classes.length - 1} more`
+})
 
-const getResourceTypeIcon = (type: string): string => {
-  const icons: Record<string, string> = {
+const getResourceTypeIcon = (resourceType: ResourceType): string => {
+  const icons: Record<ResourceType, string> = {
     'Document': 'i-heroicons-document-text',
     'Video': 'i-heroicons-video-camera',
     'Image': 'i-heroicons-photo',
     'Link': 'i-heroicons-link'
   }
-  return icons[type] || 'i-heroicons-document'
+  return icons[resourceType] || 'i-heroicons-document'
 }
 
-const getResourceActionColor = (type: string): ButtonColor => {
-  const colors: Record<string, ButtonColor> = {
+const getResourceActionColor = (resourceType: ResourceType): ButtonColor => {
+  const colors: Record<ResourceType, ButtonColor> = {
     'Document': 'blue',
     'Video': 'red',
     'Image': 'green',
     'Link': 'purple'
   }
-  return colors[type] || 'gray'
+  return colors[resourceType] || 'gray'
 }
 
 const getResourceActionVariant = (): ButtonVariant => {
   return 'soft'
 }
 
-const getResourceActionIcon = (type: string): string => {
-  const icons: Record<string, string> = {
+const getResourceActionIcon = (resourceType: ResourceType): string => {
+  const icons: Record<ResourceType, string> = {
     'Document': 'i-heroicons-arrow-down-tray',
     'Video': 'i-heroicons-play',
     'Image': 'i-heroicons-eye',
     'Link': 'i-heroicons-arrow-top-right-on-square'
   }
-  return icons[type] || 'i-heroicons-arrow-right'
+  return icons[resourceType] || 'i-heroicons-arrow-right'
 }
 
-const getResourceActionLabel = (type: string): string => {
-  const labels: Record<string, string> = {
+const getResourceActionLabel = (resourceType: ResourceType): string => {
+  const labels: Record<ResourceType, string> = {
     'Document': 'Download',
     'Video': 'Watch Video',
     'Image': 'View Image',
     'Link': 'Open Link'
   }
-  return labels[type] || 'View'
+  return labels[resourceType] || 'View'
 }
 
-const getResourceActionClass = (type: string): string => {
-  const classes: Record<string, string> = {
+const getResourceActionClass = (resourceType: ResourceType): string => {
+  const classes: Record<ResourceType, string> = {
     'Document': 'hover:bg-blue-50',
     'Video': 'hover:bg-red-50',
     'Image': 'hover:bg-green-50',
     'Link': 'hover:bg-purple-50'
   }
-  return classes[type] || ''
+  return classes[resourceType] || ''
 }
 
-const handleResourceAction = (note: Note) => {
-  if (note.type === 'Link') {
+const handleResourceAction = (note: Resource) => {
+  if (note.resource_type === 'Link') {
     window.open(note.url, '_blank')
   } else {
     emit('view', note)
   }
 }
 
-const getNoteActions = (note: Note) => {
+const handleDeleteClick = (note: Resource) => {
+  noteToDelete.value = note
+  showDeleteConfirmation.value = true
+}
+
+const handleEditClick = (note: Resource) => {
+  isEditModalOpen.value = true
+}
+
+const confirmDelete = () => {
+  if (noteToDelete.value) {
+    emit('delete', noteToDelete.value)
+    showDeleteConfirmation.value = false
+    noteToDelete.value = null
+  }
+}
+
+const getNoteActions = (note: Resource) => {
   return [
     [{
       label: 'View',

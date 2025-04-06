@@ -11,17 +11,17 @@
     }"
     @before-enter="handleBeforeEnter"
     @after-leave="handleAfterLeave"
-    :prevent-close="isCreating"
+    :prevent-close="isUpdating"
   >
     <!-- Header -->
     <div class="flex-none px-6 py-5 border-b border-gray-200 dark:border-gray-800">
       <div class="flex items-center justify-between">
         <div class="flex flex-col gap-1">
           <h3 class="text-lg font-semibold leading-6 text-gray-900 dark:text-white">
-            Add Learning Note
+            Edit Note
           </h3>
           <p class="text-sm text-gray-500 dark:text-gray-400">
-            Add a new educational resource
+            Update learning note details
           </p>
         </div>
         <UButton
@@ -37,7 +37,7 @@
 
     <!-- Form Content -->
     <div class="flex-1 px-6 py-5 overflow-y-auto">
-      <UForm :state="form" class="space-y-6" @submit="handleCreate">
+      <UForm :state="form" class="space-y-6" @submit="handleUpdate">
         <UFormGroup label="Title" required>
           <UInput v-model="form.title" placeholder="Enter note title" />
         </UFormGroup>
@@ -81,9 +81,9 @@
           </small>
         </UFormGroup>
 
-        <UFormGroup label="Resource Type" required help="Select the type of resource you want to share">
+        <UFormGroup label="Resource Type" required help="Select the type of resource">
           <USelectMenu
-            v-model="form.type"
+            v-model="form.resource_type"
             :options="resourceTypeOptions"
             value-attribute="value"
             placeholder="Select resource type"
@@ -100,12 +100,12 @@
         <UFormGroup 
           label="Resource URL" 
           required
-          :help="getUrlHelp(form.type)"
+          :help="getUrlHelp(form.resource_type)"
         >
           <UInput
             v-model="form.url"
             type="url"
-            :placeholder="getUrlPlaceholder(form.type)"
+            :placeholder="getUrlPlaceholder(form.resource_type)"
             icon="i-heroicons-link"
           />
         </UFormGroup>
@@ -124,10 +124,10 @@
         <UButton
           ref="submitButtonRef"
           color="primary"
-          :loading="isCreating"
-          label="Add Note"
-          icon="i-heroicons-plus"
-          @click="handleCreate"
+          :loading="isUpdating"
+          label="Update Note"
+          icon="i-heroicons-check"
+          @click="handleUpdate"
         />
       </div>
     </div>
@@ -136,78 +136,129 @@
 
 <script setup lang="ts">
 import { ref, watch, nextTick, onMounted } from 'vue'
+import type { Resource, ResourceType, ResourceFormData } from '~/types/resource'
 import { useNotification } from '~/composables/useNotification'
 import { useClasses } from '~/composables/useClasses'
 import { useResources } from '~/composables/useResources'
-import type { Database } from '~/types/supabase';
 
 const props = defineProps<{
   modelValue: boolean
+  note: Resource
 }>()
 
 const emit = defineEmits<{
   'update:model-value': [value: boolean]
-  'created': []
+  'updated': []
 }>()
 
 const notification = useNotification()
-const { getActiveClasses, loading: loadingClasses } = useClasses()
-const { createResource, loading: creatingResource } = useResources()
+const { getActiveClasses } = useClasses()
+const { updateResource } = useResources()
 
 const closeButtonRef = ref<HTMLButtonElement | null>(null)
 const submitButtonRef = ref<HTMLButtonElement | null>(null)
 const previousFocus = ref<HTMLElement | null>(null)
-const isCreating = ref(false)
+const isUpdating = ref(false)
 
-const form = ref({
+// Update the form interface to match what we need
+interface NoteFormData extends ResourceFormData {
+  // Keep the existing properties but override classes
+  classes: string[] // These will be IDs as strings
+}
+
+const form = ref<NoteFormData>({
   title: '',
   description: '',
-  classes: [] as string[],
-  type: '',
+  classes: [],
+  type: 'resource',
+  resource_type: 'Document',
   url: ''
 })
+
+// Resource type options with strict typing
+const resourceTypeOptions = ref([
+  { label: 'Document', value: 'Document' as ResourceType },
+  { label: 'Video', value: 'Video' as ResourceType },
+  { label: 'Image', value: 'Image' as ResourceType },
+  { label: 'Link', value: 'Link' as ResourceType }
+])
 
 // Class options state
 const classOptions = ref<{ label: string; value: string }[]>([])
 
-// Resource type options
-const resourceTypeOptions = [
-  { label: 'Document', value: 'Document' },
-  { label: 'Video', value: 'Video' },
-  { label: 'Image', value: 'Image' },
-  { label: 'Link', value: 'Link' }
-]
+// Helper function to initialize form data
+const initializeForm = (note: Resource) => {
+  form.value = {
+    title: note.title,
+    description: note.description || '',
+    // Use the classIds array we added to the resource type
+    classes: note.classIds?.map(id => id.toString()) || [],
+    type: 'resource',
+    resource_type: note.resource_type,
+    url: note.url
+  }
+}
 
-// Load classes on component mount
+// When class options are loaded
 onMounted(async () => {
   try {
     const classes = await getActiveClasses()
     classOptions.value = classes.map(cls => ({
-      label: `${cls.name} - Grade ${cls.grade}`,
+      label: `Grade ${cls.grade} - ${cls.name}`,
       value: cls.id.toString()
     }))
+
+    // Initialize form with note data including class selections
+    if (props.note) {
+      initializeForm(props.note)
+    }
   } catch (error) {
     console.error('Error loading classes:', error)
     notification.showError('Failed to load classes')
   }
 })
 
-// Reset form when modal opens/closes
+// Update form when note prop changes
 watch(
-  () => props.modelValue,
-  (newModelValue) => {
-    if (newModelValue) {
-      form.value = {
-        title: '',
-        description: '',
-        classes: [],
-        type: '',
-        url: ''
-      }
+  () => props.note,
+  (newNote) => {
+    if (newNote) {
+      initializeForm(newNote)
     }
   },
   { immediate: true }
 )
+
+// Helper functions for resource type UI
+const getResourceTypeIcon = (type: ResourceType) => {
+  const icons: Record<ResourceType, string> = {
+    'Document': 'i-heroicons-document-text',
+    'Video': 'i-heroicons-video-camera',
+    'Image': 'i-heroicons-photo',
+    'Link': 'i-heroicons-link'
+  }
+  return icons[type] || 'i-heroicons-document'
+}
+
+const getUrlHelp = (type: ResourceType): string => {
+  const helpText: Record<ResourceType, string> = {
+    'Document': 'Enter the URL to the document (PDF, DOCX, etc.)',
+    'Video': 'Enter the YouTube video URL',
+    'Image': 'Enter the URL to the image',
+    'Link': 'Enter the URL to the resource'
+  }
+  return helpText[type] || 'Enter the resource URL'
+}
+
+const getUrlPlaceholder = (type: ResourceType): string => {
+  const placeholders: Record<ResourceType, string> = {
+    'Document': 'https://example.com/document.pdf',
+    'Video': 'https://youtube.com/watch?v=...',
+    'Image': 'https://example.com/diagram.jpg',
+    'Link': 'https://example.com/resource'
+  }
+  return placeholders[type] || 'https://example.com'
+}
 
 // Focus management
 const handleBeforeEnter = () => {
@@ -222,40 +273,9 @@ const handleAfterLeave = () => {
   }
 }
 
-// Helper functions for resource type UI
-const getResourceTypeIcon = (type: string) => {
-  const icons: Record<string, string> = {
-    'Document': 'i-heroicons-document-text',
-    'Video': 'i-heroicons-video-camera',
-    'Image': 'i-heroicons-photo',
-    'Link': 'i-heroicons-link'
-  }
-  return icons[type] || 'i-heroicons-document'
-}
-
-const getUrlHelp = (type: string): string => {
-  const helpText: Record<string, string> = {
-    'Document': 'Enter the URL to the document (PDF, DOCX, etc.)',
-    'Video': 'Enter the YouTube video URL',
-    'Image': 'Enter the URL to the image',
-    'Link': 'Enter the URL to the resource'
-  }
-  return helpText[type] || 'Enter the resource URL'
-}
-
-const getUrlPlaceholder = (type: string): string => {
-  const placeholders: Record<string, string> = {
-    'Document': 'https://example.com/document.pdf',
-    'Video': 'https://youtube.com/watch?v=...',
-    'Image': 'https://example.com/diagram.jpg',
-    'Link': 'https://example.com/resource'
-  }
-  return placeholders[type] || 'https://example.com'
-}
-
-const handleCreate = async () => {
+const handleUpdate = async () => {
   try {
-    isCreating.value = true
+    isUpdating.value = true
 
     // Validate form
     if (!form.value.title.trim()) {
@@ -267,7 +287,7 @@ const handleCreate = async () => {
     if (!form.value.classes.length) {
       throw new Error('Please select at least one class')
     }
-    if (!form.value.type) {
+    if (!form.value.resource_type) {
       throw new Error('Please select a resource type')
     }
     if (!form.value.url) {
@@ -281,31 +301,22 @@ const handleCreate = async () => {
       throw new Error('Please enter a valid URL')
     }
 
-    await createResource({
+    await updateResource(props.note.id, {
       title: form.value.title,
       description: form.value.description,
       type: 'resource',
-      resource_type: form.value.type,
+      resource_type: form.value.resource_type,
       url: form.value.url,
-      classes: form.value.classes.map(id => parseInt(id))
+      classes: form.value.classes
     })
 
-    notification.showSuccess('Resource created successfully')
-    emit('created')
+    notification.showSuccess('Note updated successfully')
+    emit('updated')
     emit('update:model-value', false)
-    
-    // Reset form
-    form.value = {
-      title: '',
-      description: '',
-      classes: [],
-      type: '',
-      url: ''
-    }
   } catch (error: any) {
-    notification.showError(error.message || 'Failed to create resource')
+    notification.showError(error.message || 'Failed to update note')
   } finally {
-    isCreating.value = false
+    isUpdating.value = false
   }
 }
 </script>

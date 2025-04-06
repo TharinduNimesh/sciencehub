@@ -11,17 +11,17 @@
     }"
     @before-enter="handleBeforeEnter"
     @after-leave="handleAfterLeave"
-    :prevent-close="isCreating"
+    :prevent-close="isUpdating"
   >
     <!-- Header -->
     <div class="flex-none px-6 py-5 border-b border-gray-200 dark:border-gray-800">
       <div class="flex items-center justify-between">
         <div class="flex flex-col gap-1">
           <h3 class="text-lg font-semibold leading-6 text-gray-900 dark:text-white">
-            Add Learning Note
+            Edit Notice
           </h3>
           <p class="text-sm text-gray-500 dark:text-gray-400">
-            Add a new educational resource
+            Update notice details
           </p>
         </div>
         <UButton
@@ -37,15 +37,15 @@
 
     <!-- Form Content -->
     <div class="flex-1 px-6 py-5 overflow-y-auto">
-      <UForm :state="form" class="space-y-6" @submit="handleCreate">
+      <UForm :state="form" class="space-y-6" @submit="handleUpdate">
         <UFormGroup label="Title" required>
-          <UInput v-model="form.title" placeholder="Enter note title" />
+          <UInput v-model="form.title" placeholder="Enter notice title" />
         </UFormGroup>
 
         <UFormGroup label="Description" required>
           <UTextarea 
             v-model="form.description" 
-            placeholder="Enter note description"
+            placeholder="Enter notice description"
             :ui="{ 
               height: 'h-24',
               base: 'block w-full rounded-md text-gray-900 dark:text-white shadow-sm'
@@ -53,7 +53,7 @@
           />
         </UFormGroup>
 
-        <UFormGroup label="Classes" required help="Select the classes this note applies to">
+        <UFormGroup label="Classes" required help="Select the classes this notice applies to">
           <USelectMenu
             v-model="form.classes"
             :options="classOptions"
@@ -81,32 +81,16 @@
           </small>
         </UFormGroup>
 
-        <UFormGroup label="Resource Type" required help="Select the type of resource you want to share">
-          <USelectMenu
-            v-model="form.type"
-            :options="resourceTypeOptions"
-            value-attribute="value"
-            placeholder="Select resource type"
-          >
-            <template #option="{ option }">
-              <div class="flex items-center gap-2">
-                <UIcon :name="getResourceTypeIcon(option.value)" class="w-5 h-5 text-gray-400" />
-                <span>{{ option.label }}</span>
-              </div>
-            </template>
-          </USelectMenu>
-        </UFormGroup>
-
         <UFormGroup 
-          label="Resource URL" 
+          label="Image URL" 
+          help="Provide a URL to an image for the notice"
           required
-          :help="getUrlHelp(form.type)"
         >
           <UInput
             v-model="form.url"
             type="url"
-            :placeholder="getUrlPlaceholder(form.type)"
-            icon="i-heroicons-link"
+            placeholder="https://example.com/image.jpg"
+            icon="i-heroicons-photo"
           />
         </UFormGroup>
       </UForm>
@@ -124,10 +108,10 @@
         <UButton
           ref="submitButtonRef"
           color="primary"
-          :loading="isCreating"
-          label="Add Note"
-          icon="i-heroicons-plus"
-          @click="handleCreate"
+          :loading="isUpdating"
+          label="Update Notice"
+          icon="i-heroicons-check"
+          @click="handleUpdate"
         />
       </div>
     </div>
@@ -139,71 +123,83 @@ import { ref, watch, nextTick, onMounted } from 'vue'
 import { useNotification } from '~/composables/useNotification'
 import { useClasses } from '~/composables/useClasses'
 import { useResources } from '~/composables/useResources'
-import type { Database } from '~/types/supabase';
+import type { Notice, ResourceFormData } from '~/types/resource'
+
+// Update the form interface to match what we need
+interface NoticeFormData extends ResourceFormData {
+  // Keep the existing properties but override classes
+  classes: string[] // These will be IDs as strings
+}
 
 const props = defineProps<{
   modelValue: boolean
+  notice: Notice
 }>()
 
 const emit = defineEmits<{
   'update:model-value': [value: boolean]
-  'created': []
+  'updated': []
 }>()
 
 const notification = useNotification()
-const { getActiveClasses, loading: loadingClasses } = useClasses()
-const { createResource, loading: creatingResource } = useResources()
+const { getActiveClasses } = useClasses()
+const { updateResource } = useResources()
 
 const closeButtonRef = ref<HTMLButtonElement | null>(null)
 const submitButtonRef = ref<HTMLButtonElement | null>(null)
 const previousFocus = ref<HTMLElement | null>(null)
-const isCreating = ref(false)
+const isUpdating = ref(false)
 
-const form = ref({
+const form = ref<NoticeFormData>({
   title: '',
   description: '',
-  classes: [] as string[],
-  type: '',
+  classes: [],
+  type: 'notice',
+  resource_type: 'Image',
   url: ''
 })
 
 // Class options state
 const classOptions = ref<{ label: string; value: string }[]>([])
 
-// Resource type options
-const resourceTypeOptions = [
-  { label: 'Document', value: 'Document' },
-  { label: 'Video', value: 'Video' },
-  { label: 'Image', value: 'Image' },
-  { label: 'Link', value: 'Link' }
-]
+// Helper function to initialize form data
+const initializeForm = (notice: Notice) => {
+  form.value = {
+    title: notice.title,
+    description: notice.description || '',
+    // Use the classIds array we added to the resource type
+    classes: notice.classIds?.map(id => id.toString()) || [],
+    type: 'notice',
+    resource_type: 'Image',
+    url: notice.url
+  }
+}
 
-// Load classes on component mount
+// When class options are loaded
 onMounted(async () => {
   try {
     const classes = await getActiveClasses()
     classOptions.value = classes.map(cls => ({
-      label: `${cls.name} - Grade ${cls.grade}`,
+      label: `Grade ${cls.grade} - ${cls.name}`,
       value: cls.id.toString()
     }))
+
+    // Initialize form with notice data including class selections
+    if (props.notice) {
+      initializeForm(props.notice)
+    }
   } catch (error) {
     console.error('Error loading classes:', error)
     notification.showError('Failed to load classes')
   }
 })
 
-// Reset form when modal opens/closes
+// Update form when notice prop changes
 watch(
-  () => props.modelValue,
-  (newModelValue) => {
-    if (newModelValue) {
-      form.value = {
-        title: '',
-        description: '',
-        classes: [],
-        type: '',
-        url: ''
-      }
+  () => props.notice,
+  (newNotice) => {
+    if (newNotice) {
+      initializeForm(newNotice)
     }
   },
   { immediate: true }
@@ -222,90 +218,47 @@ const handleAfterLeave = () => {
   }
 }
 
-// Helper functions for resource type UI
-const getResourceTypeIcon = (type: string) => {
-  const icons: Record<string, string> = {
-    'Document': 'i-heroicons-document-text',
-    'Video': 'i-heroicons-video-camera',
-    'Image': 'i-heroicons-photo',
-    'Link': 'i-heroicons-link'
-  }
-  return icons[type] || 'i-heroicons-document'
-}
-
-const getUrlHelp = (type: string): string => {
-  const helpText: Record<string, string> = {
-    'Document': 'Enter the URL to the document (PDF, DOCX, etc.)',
-    'Video': 'Enter the YouTube video URL',
-    'Image': 'Enter the URL to the image',
-    'Link': 'Enter the URL to the resource'
-  }
-  return helpText[type] || 'Enter the resource URL'
-}
-
-const getUrlPlaceholder = (type: string): string => {
-  const placeholders: Record<string, string> = {
-    'Document': 'https://example.com/document.pdf',
-    'Video': 'https://youtube.com/watch?v=...',
-    'Image': 'https://example.com/diagram.jpg',
-    'Link': 'https://example.com/resource'
-  }
-  return placeholders[type] || 'https://example.com'
-}
-
-const handleCreate = async () => {
+const handleUpdate = async () => {
   try {
-    isCreating.value = true
+    isUpdating.value = true
 
     // Validate form
     if (!form.value.title.trim()) {
       throw new Error('Title is required')
     }
-    if (!form.value.description.trim()) {
+    if (!form.value.description?.trim()) {
       throw new Error('Description is required')
     }
     if (!form.value.classes.length) {
       throw new Error('Please select at least one class')
     }
-    if (!form.value.type) {
-      throw new Error('Please select a resource type')
-    }
     if (!form.value.url) {
-      throw new Error('Please enter a valid resource URL')
+      throw new Error('Please provide an image URL for the notice')
     }
 
     // Validate URL
     try {
       new URL(form.value.url)
     } catch {
-      throw new Error('Please enter a valid URL')
+      throw new Error('Please enter a valid image URL')
     }
 
-    await createResource({
+    await updateResource(props.notice.id, {
       title: form.value.title,
       description: form.value.description,
-      type: 'resource',
-      resource_type: form.value.type,
+      type: 'notice',
+      resource_type: 'Image',
       url: form.value.url,
-      classes: form.value.classes.map(id => parseInt(id))
+      classes: form.value.classes // The type conversion happens in useResources
     })
 
-    notification.showSuccess('Resource created successfully')
-    emit('created')
+    notification.showSuccess('Notice updated successfully')
+    emit('updated')
     emit('update:model-value', false)
-    
-    // Reset form
-    form.value = {
-      title: '',
-      description: '',
-      classes: [],
-      type: '',
-      url: ''
-    }
   } catch (error: any) {
-    notification.showError(error.message || 'Failed to create resource')
+    notification.showError(error.message || 'Failed to update notice')
   } finally {
-    isCreating.value = false
+    isUpdating.value = false
   }
 }
 </script>

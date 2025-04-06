@@ -26,7 +26,57 @@
       </template>
 
       <!-- Notice Cards -->
-      <div v-if="paginatedNotices.length" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div v-if="isRefreshingNotices" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div v-for="i in adminItemsPerPage" :key="i" class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden h-full flex flex-col">
+          <!-- Image skeleton -->
+          <div class="relative aspect-video w-full bg-gray-100 overflow-hidden">
+            <USkeleton class="h-64 w-full" />
+          </div>
+
+          <!-- Content skeleton -->
+          <div class="p-4 flex flex-col flex-1">
+            <!-- Title and date skeleton -->
+            <div class="flex items-center justify-between mb-2">
+              <USkeleton class="h-6 w-3/4" />
+              <USkeleton class="h-4 w-20" />
+            </div>
+
+            <!-- Description skeleton -->
+            <USkeleton class="h-4 w-full mb-1" />
+            <USkeleton class="h-4 w-3/4 mb-3" />
+
+            <!-- Tags skeleton -->
+            <div class="flex gap-2 mb-4">
+              <USkeleton v-for="j in 3" :key="j" class="h-5 w-16 rounded-full" />
+            </div>
+
+            <!-- Actions skeleton -->
+            <div class="flex justify-between items-center mt-auto pt-4 border-t">
+              <USkeleton class="h-8 w-28 rounded-lg" />
+              <div class="flex gap-2">
+                <USkeleton class="h-8 w-8 rounded-full" />
+                <USkeleton class="h-8 w-8 rounded-full" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div v-else-if="paginatedNotices.length === 0" class="bg-gray-50 rounded-lg p-12 text-center">
+        <div class="mx-auto h-24 w-24 flex items-center justify-center rounded-full bg-primary-50">
+          <UIcon name="i-heroicons-megaphone" class="h-12 w-12 text-primary-400" />
+        </div>
+        <h3 class="mt-6 text-xl font-medium text-gray-900">No notices found</h3>
+        <p class="mt-2 text-gray-500">Get started by creating a new notice for your students.</p>
+        <div class="mt-6">
+          <UButton
+            color="primary"
+            label="Create Notice"
+            @click="isCreateNoticeModalOpen = true"
+            :ui="{ rounded: 'rounded-full' }"
+          />
+        </div>
+      </div>
+      <div v-else :class="['grid gap-6', gridClass]">
         <NoticeCard
           v-for="notice in paginatedNotices"
           :key="notice.id"
@@ -34,11 +84,6 @@
           @edit="handleEditNotice"
           @delete="handleDeleteNotice"
         />
-      </div>
-      <div v-else class="text-center py-12">
-        <UIcon name="i-heroicons-document-text" class="w-12 h-12 mx-auto text-gray-400" />
-        <h3 class="mt-2 text-sm font-semibold text-gray-900">No notices</h3>
-        <p class="mt-1 text-sm text-gray-500">Get started by creating a new notice.</p>
       </div>
     </ResourceSection>
 
@@ -68,20 +113,65 @@
       </template>
 
       <!-- Note Cards -->
-      <div v-if="paginatedNotes.length" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div v-if="isRefreshingNotes" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div v-for="i in adminItemsPerPage" :key="i" class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden h-full flex flex-col">
+          <!-- Icon skeleton -->
+          <div class="p-4">
+            <div class="flex items-start gap-6">
+              <USkeleton class="h-14 w-14 rounded-xl" />
+              <div class="flex-1">
+                <USkeleton class="h-6 w-3/4 mb-2" />
+                <USkeleton class="h-4 w-24" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Content skeleton -->
+          <div class="px-4 pb-4 flex flex-col flex-1">
+            <!-- Description skeleton -->
+            <USkeleton class="h-4 w-full mb-1" />
+            <USkeleton class="h-4 w-3/4 mb-3" />
+
+            <!-- Tags skeleton -->
+            <div class="flex gap-2 mb-4">
+              <USkeleton v-for="j in 3" :key="j" class="h-5 w-16 rounded-full" />
+            </div>
+
+            <!-- Actions skeleton -->
+            <div class="flex justify-between items-center mt-auto pt-4 border-t">
+              <USkeleton class="h-8 w-28 rounded-lg" />
+              <div class="flex gap-2">
+                <USkeleton class="h-8 w-8 rounded-full" />
+                <USkeleton class="h-8 w-8 rounded-full" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div v-else-if="paginatedNotes.length === 0" class="bg-gray-50 rounded-lg p-12 text-center">
+        <div class="mx-auto h-24 w-24 flex items-center justify-center rounded-full bg-primary-50">
+          <UIcon name="i-heroicons-document-text" class="h-12 w-12 text-primary-400" />
+        </div>
+        <h3 class="mt-6 text-xl font-medium text-gray-900">No notes found</h3>
+        <p class="mt-2 text-gray-500">Get started by creating a new learning note for your students.</p>
+        <div class="mt-6">
+          <UButton
+            color="primary"
+            label="Add Note"
+            @click="isCreateNoteModalOpen = true"
+            :ui="{ rounded: 'rounded-full' }"
+          />
+        </div>
+      </div>
+      <div v-else :class="['grid gap-6', gridClass]">
         <NoteCard
           v-for="note in paginatedNotes"
           :key="note.id"
           :note="note"
-          @view="handleViewNote"
           @edit="handleEditNote"
           @delete="handleDeleteNote"
+          @view="handleViewNote"
         />
-      </div>
-      <div v-else class="text-center py-12">
-        <UIcon name="i-heroicons-book-open" class="w-12 h-12 mx-auto text-gray-400" />
-        <h3 class="mt-2 text-sm font-semibold text-gray-900">No notes</h3>
-        <p class="mt-1 text-sm text-gray-500">Get started by adding a new note.</p>
       </div>
     </ResourceSection>
 
@@ -118,53 +208,12 @@
         <!-- Combined Resources List -->
         <StudentResourceList
           :resources="paginatedStudentResources"
+          v-model:current-page="currentPage"
+          :total-items="filteredStudentResources.length"
+          :items-per-page="itemsPerPage"
           @resource-action="handleResourceAction"
           @notice-view="viewNoticeDetails"
         />
-
-        <!-- Pagination -->
-        <div v-if="filteredStudentResources.length > 0" class="bg-white px-4 py-3 border-t border-gray-100">
-          <div class="flex items-center justify-between">
-            <div class="text-sm text-gray-500">
-              Showing {{ ((currentPage - 1) * itemsPerPage) + 1 }} to {{ Math.min(currentPage * itemsPerPage, filteredStudentResources.length) }} of {{ filteredStudentResources.length }} resources
-            </div>
-            <div class="flex gap-2">
-              <UButton
-                :disabled="currentPage === 1"
-                @click="currentPage--"
-                color="gray"
-                variant="soft"
-                icon="i-heroicons-chevron-left"
-                :ui="{ rounded: 'rounded-full' }"
-                square
-              />
-              <div class="flex items-center gap-1">
-                <template v-for="page in totalPages" :key="page">
-                  <UButton
-                    v-if="page === currentPage || page === 1 || page === totalPages || (page >= currentPage - 1 && page <= currentPage + 1)"
-                    :color="page === currentPage ? 'primary' : 'gray'"
-                    :variant="page === currentPage ? 'solid' : 'soft'"
-                    :ui="{ rounded: 'rounded-full' }"
-                    @click="currentPage = page"
-                    class="min-w-[32px]"
-                  >
-                    {{ page }}
-                  </UButton>
-                  <span v-else-if="page === currentPage - 2 || page === currentPage + 2" class="px-1">...</span>
-                </template>
-              </div>
-              <UButton
-                :disabled="currentPage === totalPages"
-                @click="currentPage++"
-                color="gray"
-                variant="soft"
-                icon="i-heroicons-chevron-right"
-                :ui="{ rounded: 'rounded-full' }"
-                square
-              />
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   </div>
@@ -186,22 +235,22 @@
 import { ref, computed } from 'vue'
 import { isMobileScreen } from '~/lib/utils'
 import { useNotification } from '~/composables/useNotification'
+import { useResources } from '~/composables/useResources'
+import { useSidebarStore } from '~/stores/sidebar'
+import type { Resource, Notice, CombinedResource, ResourceType } from '~/types/resource'
 import ResourceSection from '~/components/Console/Resources/ResourceSection.vue'
 import NoticeCard from '~/components/Console/Resources/NoticeCard.vue'
 import NoteCard from '~/components/Console/Resources/NoteCard.vue'
 import StudentResourceList from '~/components/Console/Resources/StudentResourceList.vue'
-
-// Page meta
-definePageMeta({
-  layout: 'console'
-})
+import ConsoleNoticesEditModal from '~/components/Console/Notices/EditModal.vue'
+import ConsoleNotesEditModal from '~/components/Console/Notes/EditModal.vue'
 
 // State
 const isMobile = ref(isMobileScreen())
 const showNoticeFilters = ref(false)
 const showNoteFilters = ref(false)
-const isRefreshingNotices = ref(false)
-const isRefreshingNotes = ref(false)
+const isRefreshingNotices = ref(true) // Set initial loading state to true
+const isRefreshingNotes = ref(true) // Set initial loading state to true
 const isCreateNoticeModalOpen = ref(false)
 const isCreateNoteModalOpen = ref(false)
 const studentSearch = ref('')
@@ -214,7 +263,7 @@ const noticeCurrentPage = ref(1)
 const noteCurrentPage = ref(1)
 const adminItemsPerPage = ref(6) // 6 items per page for grid layout (3x2)
 
-// Filter states
+// Filter states with proper typing
 const noticeFilters = ref({
   search: '',
   class: undefined as string | undefined,
@@ -224,8 +273,56 @@ const noticeFilters = ref({
 const noteFilters = ref({
   search: '',
   class: undefined as string | undefined,
-  type: undefined as string | undefined
+  type: undefined as ResourceType | undefined
 })
+
+// Replace dummy data with real data fetching with proper typing
+const { getResources, deleteResource } = useResources()
+const notification = useNotification()
+
+const notices = ref<Notice[]>([])
+const notes = ref<Resource[]>([])
+
+// Page meta
+definePageMeta({
+  layout: 'console'
+})
+
+// Add store initialization
+const sidebarStore = useSidebarStore()
+
+const loadResources = async () => {
+  isRefreshingNotices.value = true
+  isRefreshingNotes.value = true
+  
+  try {
+    const [noticesData, notesData] = await Promise.all([
+      getResources('notice'),
+      getResources('resource')
+    ])
+
+    // Transform and type-check the data
+    notices.value = noticesData.filter(n => n.type === 'notice').map(notice => ({
+      ...notice,
+      resource_type: 'Image', // Ensure notices always have Image type
+      createdAt: notice.created_at
+    }))
+
+    notes.value = notesData.filter(n => n.type === 'resource').map(note => ({
+      ...note,
+      createdAt: note.created_at
+    }))
+  } catch (error) {
+    console.error('Error loading resources:', error)
+    notification.showError('Failed to load resources')
+  } finally {
+    isRefreshingNotices.value = false
+    isRefreshingNotes.value = false
+  }
+}
+
+// Initialize data on mount
+onMounted(loadResources)
 
 // Filtered data computeds
 const filteredNotices = computed(() => {
@@ -235,7 +332,7 @@ const filteredNotices = computed(() => {
     const search = noticeFilters.value.search.toLowerCase()
     filtered = filtered.filter(notice => 
       notice.title.toLowerCase().includes(search) ||
-      notice.description.toLowerCase().includes(search)
+      notice.description?.toLowerCase().includes(search)
     )
   }
 
@@ -273,7 +370,7 @@ const filteredNotes = computed(() => {
     const search = noteFilters.value.search.toLowerCase()
     filtered = filtered.filter(note => 
       note.title.toLowerCase().includes(search) ||
-      note.description.toLowerCase().includes(search)
+      note.description?.toLowerCase().includes(search)
     )
   }
 
@@ -285,61 +382,43 @@ const filteredNotes = computed(() => {
 
   if (noteFilters.value.type) {
     filtered = filtered.filter(note => 
-      note.type === noteFilters.value.type
+      note.resource_type === noteFilters.value.type
     )
   }
 
   return filtered
 })
 
-const filteredStudentNotices = computed(() => {
-  let filtered = notices.value
-  if (studentSearch.value) {
-    const search = studentSearch.value.toLowerCase()
-    filtered = filtered.filter(notice => 
-      notice.title.toLowerCase().includes(search) ||
-      notice.description.toLowerCase().includes(search) ||
-      notice.classes.some(cls => cls.toLowerCase().includes(search))
-    )
-  }
-  return filtered
-})
-
-const filteredStudentNotes = computed(() => {
-  let filtered = notes.value
-  if (studentSearch.value) {
-    const search = studentSearch.value.toLowerCase()
-    filtered = filtered.filter(note => 
-      note.title.toLowerCase().includes(search) ||
-      note.description.toLowerCase().includes(search) ||
-      note.classes.some(cls => cls.toLowerCase().includes(search)) ||
-      note.type.toLowerCase().includes(search)
-    )
-  }
-  return filtered
-})
-
-const filteredStudentResources = computed(() => {
-  // Combine notices and notes into a single array
+const combinedStudentResources = computed(() => {
+  // Combine notices and resources into a single array
   const allResources = [
-    ...notices.value.map(notice => ({ ...notice, isNotice: true })),
-    ...notes.value.map(note => ({ ...note, isNote: true }))
+    ...notices.value.map(notice => ({
+      ...notice,
+      type: 'notice' as const,
+      image: notice.url // Map url to image for notices
+    })),
+    ...notes.value.map(note => ({
+      ...note,
+      type: 'resource' as const
+    }))
   ]
 
   // Sort by creation date, most recent first
-  allResources.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  return allResources.sort((a, b) => 
+    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  )
+})
 
-  if (studentSearch.value) {
-    const search = studentSearch.value.toLowerCase()
-    return allResources.filter(resource => 
-      resource.title.toLowerCase().includes(search) ||
-      resource.description.toLowerCase().includes(search) ||
-      resource.classes.some(cls => cls.toLowerCase().includes(search)) ||
-      (resource.type?.toLowerCase().includes(search))
-    )
-  }
+const filteredStudentResources = computed(() => {
+  if (!studentSearch.value) return combinedStudentResources.value
 
-  return allResources
+  const search = studentSearch.value.toLowerCase()
+  return combinedStudentResources.value.filter(resource => 
+    resource.title.toLowerCase().includes(search) ||
+    resource.description?.toLowerCase().includes(search) ||
+    resource.classes.some(cls => cls.toLowerCase().includes(search)) ||
+    (resource.type === 'resource' && resource.resource_type.toLowerCase().includes(search))
+  )
 })
 
 const paginatedStudentResources = computed(() => {
@@ -358,19 +437,23 @@ const paginatedNotices = computed(() => {
   return filteredNotices.value.slice(startIndex, endIndex)
 })
 
-const totalNoticePages = computed(() => 
-  Math.ceil(filteredNotices.value.length / adminItemsPerPage.value)
-)
-
 const paginatedNotes = computed(() => {
   const startIndex = (noteCurrentPage.value - 1) * adminItemsPerPage.value
   const endIndex = startIndex + adminItemsPerPage.value
   return filteredNotes.value.slice(startIndex, endIndex)
 })
 
-const totalNotePages = computed(() => 
-  Math.ceil(filteredNotes.value.length / adminItemsPerPage.value)
-)
+const gridClass = computed(() => {
+  // Base responsive grid that works independently of sidebar
+  const baseGrid = "grid-cols-1 sm:grid-cols-2"
+
+  // Only adjust grid on large screens based on sidebar state
+  const largeScreenGrid = sidebarStore.isOpen
+    ? "xl:grid-cols-2"
+    : "lg:grid-cols-2 xl:grid-cols-3"
+
+  return `${baseGrid} ${largeScreenGrid}`
+})
 
 const updateNoticeFilters = (filters: typeof noticeFilters.value) => {
   noticeFilters.value = filters
@@ -380,197 +463,79 @@ const updateNoteFilters = (filters: typeof noteFilters.value) => {
   noteFilters.value = filters
 }
 
-// Dummy data for notices
-const notices = ref([
-  {
-    id: 1,
-    title: 'Upcoming Final Exam Schedule',
-    description: 'Important information about the final examination dates and venues.',
-    createdAt: '2024-04-01T09:00:00',
-    classes: ['Grade 11 - Physics', 'Grade 11 - Chemistry'],
-    image: 'https://images.unsplash.com/photo-1606326608606-aa0b62935f2b?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&h=400'
-  },
-  {
-    id: 2,
-    title: 'Holiday Schedule Update',
-    description: 'Updated schedule for the upcoming holiday period.',
-    createdAt: '2024-03-30T14:30:00',
-    classes: ['All Classes'],
-    image: 'https://images.unsplash.com/photo-1506784365847-bbad939e9335?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8MHx8&auto=format&fit=crop&w=800&h=400'
-  },
-  {
-    id: 3,
-    title: 'Science Lab Safety Guidelines',
-    description: 'Updated safety protocols and guidelines for all laboratory sessions.',
-    createdAt: '2024-03-28T11:00:00',
-    classes: ['Grade 11 - Physics', 'Grade 11 - Chemistry'],
-    image: 'https://images.unsplash.com/photo-1532094349884-543bc11b234d?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8MHx8&auto=format&fit=crop&w=800&h=400'
-  }
-])
-
-// Dummy data for notes
-const notes = ref([
-  {
-    id: 1,
-    title: 'Quantum Mechanics Introduction',
-    description: 'Comprehensive introduction to quantum mechanics principles.',
-    type: 'Document',
-    createdAt: '2024-03-29T10:15:00',
-    classes: ['Grade 11 - Physics'],
-    url: 'https://example.com/quantum-mechanics.pdf'
-  },
-  {
-    id: 2,
-    title: 'Chemical Bonding Video Lecture',
-    description: 'Video lecture explaining different types of chemical bonds.',
-    type: 'Video',
-    createdAt: '2024-03-28T16:45:00',
-    classes: ['Grade 11 - Chemistry'],
-    url: 'https://example.com/chemical-bonding.mp4'
-  },
-  {
-    id: 3,
-    title: 'Periodic Table Reference Guide',
-    description: 'Interactive periodic table with detailed element information.',
-    type: 'Link',
-    createdAt: '2024-03-27T09:30:00',
-    classes: ['Grade 11 - Chemistry', 'Grade 10 - Chemistry'],
-    url: 'https://example.com/periodic-table'
-  }
-])
-
-// Utility functions
-const formatDate = (dateString: string) => {
-  return new Date(dateString).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  })
-}
-
-const getResourceTypeIcon = (type: string) => {
-  const icons: Record<string, string> = {
-    'Document': 'i-heroicons-document-text',
-    'Video': 'i-heroicons-video-camera',
-    'Image': 'i-heroicons-photo',
-    'Link': 'i-heroicons-link'
-  }
-  return icons[type] || 'i-heroicons-document'
-}
-
-const getResourceTypeColor = (type: string): string => {
-  const colors: Record<string, string> = {
-    'Document': 'blue',
-    'Video': 'red',
-    'Image': 'green',
-    'Link': 'purple'
-  }
-  return colors[type] || 'gray'
-}
-
-const getResourceActionColor = (type: string): string => {
-  const colors: Record<string, string> = {
-    'Document': 'blue',
-    'Video': 'red',
-    'Image': 'green',
-    'Link': 'purple'
-  }
-  return colors[type] || 'primary'
-}
-
-const getResourceActionVariant = (type: string): string => {
-  return 'soft'
-}
-
-const getResourceActionIcon = (type: string): string => {
-  const icons: Record<string, string> = {
-    'Document': 'i-heroicons-arrow-down-tray',
-    'Video': 'i-heroicons-play',
-    'Image': 'i-heroicons-eye',
-    'Link': 'i-heroicons-arrow-top-right-on-square'
-  }
-  return icons[type] || 'i-heroicons-arrow-right'
-}
-
-const getResourceActionLabel = (type: string): string => {
-  const labels: Record<string, string> = {
-    'Document': 'Download',
-    'Video': 'Watch Video',
-    'Image': 'View Image',
-    'Link': 'Open Link'
-  }
-  return labels[type] || 'View'
-}
-
-const getResourceActionClass = (type: string): string => {
-  const classes: Record<string, string> = {
-    'Document': 'hover:bg-blue-50',
-    'Video': 'hover:bg-red-50',
-    'Image': 'hover:bg-green-50',
-    'Link': 'hover:bg-purple-50'
-  }
-  return classes[type] || ''
-}
-
-const formatClassName = (className: string): string => {
-  // Extract grade number and subject
-  const parts = className.split(' - ')
-  if (parts.length === 2) {
-    const grade = parts[0].match(/\d+/)?.[0] || ''
-    return `G${grade} ${parts[1]}`
-  }
-  return className
-}
-
-const getClassBadgeColor = (className: string): string => {
-  if (className.includes('Physics')) return 'blue'
-  if (className.includes('Chemistry')) return 'green'
-  if (className.includes('Biology')) return 'yellow'
-  if (className.includes('Mathematics')) return 'purple'
-  return 'gray'
-}
-
-const handleResourceAction = (note: any) => {
-  if (note.type === 'Link') {
-    window.open(note.url, '_blank')
+const handleResourceAction = (resource: Resource) => {
+  if (resource.resource_type === 'Link') {
+    window.open(resource.url, '_blank')
   } else {
-    // TODO: Implement download/view actions for other resource types
-    console.log('Handle resource action:', note.type, note.url)
+    window.open(resource.url, '_blank')
   }
 }
 
-const handleEditNotice = (notice: any) => {
-  console.log('Edit notice:', notice.id)
+const handleEditNotice = async (notice: Notice) => {
+  await refreshNotices()
 }
 
-const handleDeleteNotice = (notice: any) => {
-  console.log('Delete notice:', notice.id)
+const handleDeleteNotice = async (notice: Notice) => {
+  try {
+    await deleteResource(notice.id)
+    notification.showSuccess('Notice deleted successfully')
+    await refreshNotices()
+  } catch (error) {
+    console.error('Error deleting notice:', error)
+    notification.showError('Failed to delete notice')
+  }
 }
 
-const handleViewNote = (note: any) => {
-  console.log('View note:', note.id)
+const handleViewNote = (note: Resource) => {
+  window.open(note.url, '_blank')
 }
 
-const handleEditNote = (note: any) => {
-  console.log('Edit note:', note.id)
+const handleEditNote = async (note: Resource) => {
+  await refreshNotes()
 }
 
-const handleDeleteNote = (note: any) => {
-  console.log('Delete note:', note.id)
+const handleDeleteNote = async (note: Resource) => {
+  try {
+    await deleteResource(note.id)
+    notification.showSuccess('Note deleted successfully')
+    await refreshNotes()
+  } catch (error) {
+    console.error('Error deleting note:', error)
+    notification.showError('Failed to delete note')
+  }
 }
 
 const refreshNotices = async () => {
   isRefreshingNotices.value = true
-  // TODO: Implement actual refresh logic
-  await new Promise(resolve => setTimeout(resolve, 1000))
-  isRefreshingNotices.value = false
+  try {
+    const noticesData = await getResources('notice')
+    notices.value = noticesData.filter(n => n.type === 'notice').map(notice => ({
+      ...notice,
+      resource_type: 'Image', // Ensure notices always have Image type
+      createdAt: notice.created_at
+    }))
+  } catch (error) {
+    console.error('Error refreshing notices:', error)
+    notification.showError('Failed to refresh notices')
+  } finally {
+    isRefreshingNotices.value = false
+  }
 }
 
 const refreshNotes = async () => {
   isRefreshingNotes.value = true
-  // TODO: Implement actual refresh logic
-  await new Promise(resolve => setTimeout(resolve, 1000))
-  isRefreshingNotes.value = false
+  try {
+    const notesData = await getResources('resource')
+    notes.value = notesData.filter(n => n.type === 'resource').map(note => ({
+      ...note,
+      createdAt: note.created_at
+    }))
+  } catch (error) {
+    console.error('Error refreshing notes:', error)
+    notification.showError('Failed to refresh notes')
+  } finally {
+    isRefreshingNotes.value = false
+  }
 }
 
 const refreshResources = async () => {
@@ -582,19 +547,9 @@ const refreshResources = async () => {
   isRefreshingResources.value = false
 }
 
-const getResourceTypeIconClass = (type: string): string => {
-  const classes: Record<string, string> = {
-    'Document': 'text-blue-500',
-    'Video': 'text-red-500',
-    'Image': 'text-green-500',
-    'Link': 'text-purple-500'
-  }
-  return classes[type] || 'text-gray-500'
-}
-
-const viewNoticeDetails = (notice: any) => {
-  // TODO: Implement notice details view
-  console.log('View notice details:', notice.id)
+const viewNoticeDetails = (notice: Notice) => {
+  // TODO: Implement notice details view modal
+  console.log('View notice details:', notice)
 }
 
 // Mobile responsive handler

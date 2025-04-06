@@ -61,6 +61,7 @@
             placeholder="Select classes"
             searchable
             searchPlaceholder="Search classes..."
+            value-attribute="value"
           >
             <template #option="{ option }">
               <span class="truncate">{{ option.label }}</span>
@@ -85,7 +86,7 @@
           help="Provide a URL to an image for the notice (optional)"
         >
           <UInput
-            v-model="form.imageUrl"
+            v-model="form.url"
             type="url"
             placeholder="https://example.com/image.jpg"
             icon="i-heroicons-photo"
@@ -117,8 +118,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, watch, nextTick, onMounted } from 'vue'
+import type { ResourceFormData } from '~/types/resource'
 import { useNotification } from '~/composables/useNotification'
+import { useClasses } from '~/composables/useClasses'
+import { useResources } from '~/composables/useResources'
 
 const props = defineProps<{
   modelValue: boolean
@@ -130,22 +134,52 @@ const emit = defineEmits<{
 }>()
 
 const notification = useNotification()
+const { getActiveClasses, loading: loadingClasses } = useClasses()
+const { createResource, loading: creatingResource } = useResources()
 
-// Add refs for focus management
 const closeButtonRef = ref<HTMLButtonElement | null>(null)
 const submitButtonRef = ref<HTMLButtonElement | null>(null)
 const previousFocus = ref<HTMLElement | null>(null)
-
 const isCreating = ref(false)
 
-const form = ref({
+const form = ref<ResourceFormData>({
   title: '',
   description: '',
-  classes: [] as string[],
-  imageUrl: ''
+  classes: [],
+  type: 'notice',
+  resource_type: 'Image', // Notice type is always Image
+  url: ''
 })
 
-// Focus management handlers
+// Class options state
+const classOptions = ref<{ label: string; value: string }[]>([])
+
+// Load classes on component mount
+onMounted(async () => {
+  try {
+    const classes = await getActiveClasses()
+    classOptions.value = classes.map(cls => ({
+      label: `${cls.name} - Grade ${cls.grade}`,
+      value: cls.id.toString()
+    }))
+  } catch (error) {
+    console.error('Error loading classes:', error)
+    notification.showError('Failed to load classes')
+  }
+})
+
+// Reset form when modal opens/closes
+watch(
+  () => props.modelValue,
+  (newModelValue) => {
+    if (newModelValue) {
+      resetForm()
+    }
+  },
+  { immediate: true }
+)
+
+// Focus management
 const handleBeforeEnter = () => {
   previousFocus.value = document.activeElement as HTMLElement
 }
@@ -157,30 +191,6 @@ const handleAfterLeave = () => {
     })
   }
 }
-
-// Dummy class options - replace with actual data
-const classOptions = [
-  { label: 'Grade 11 - Physics', value: 'Grade 11 - Physics' },
-  { label: 'Grade 11 - Chemistry', value: 'Grade 11 - Chemistry' },
-  { label: 'Grade 10 - Physics', value: 'Grade 10 - Physics' },
-  { label: 'Grade 10 - Chemistry', value: 'Grade 10 - Chemistry' }
-]
-
-// Reset form when modal opens/closes
-watch(
-  () => props.modelValue,
-  (newModelValue) => {
-    if (newModelValue) {
-      form.value = {
-        title: '',
-        description: '',
-        classes: [],
-        imageUrl: ''
-      }
-    }
-  },
-  { immediate: true }
-)
 
 const handleCreate = async () => {
   try {
@@ -196,33 +206,35 @@ const handleCreate = async () => {
     if (!form.value.classes.length) {
       throw new Error('Please select at least one class')
     }
-
-    if (form.value.imageUrl) {
-      try {
-        new URL(form.value.imageUrl)
-      } catch {
-        throw new Error('Please enter a valid image URL')
-      }
+    if (!form.value.url) {
+      throw new Error('Please upload a notice image')
     }
 
-    // TODO: Implement actual creation logic here
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await createResource({
+      ...form.value,
+      type: 'notice',
+      resource_type: 'Image' // Enforce Image type for notices
+    })
 
     notification.showSuccess('Notice created successfully')
     emit('created')
     emit('update:model-value', false)
-    
-    // Reset form
-    form.value = {
-      title: '',
-      description: '',
-      classes: [],
-      imageUrl: ''
-    }
+    resetForm()
   } catch (error: any) {
     notification.showError(error.message || 'Failed to create notice')
   } finally {
     isCreating.value = false
+  }
+}
+
+const resetForm = () => {
+  form.value = {
+    title: '',
+    description: '',
+    classes: [],
+    type: 'notice',
+    resource_type: 'Image',
+    url: ''
   }
 }
 </script>

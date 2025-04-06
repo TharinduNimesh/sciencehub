@@ -99,6 +99,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import type { ResourceType } from '~/types/resource'
 
 interface Option {
   label: string
@@ -108,7 +109,7 @@ interface Option {
 interface NoteFilters {
   search: string
   class: string | undefined
-  type: string | undefined
+  type: ResourceType | undefined
 }
 
 const props = defineProps<{
@@ -133,8 +134,8 @@ const resourceTypeOptions: Option[] = [
   { label: 'Link', value: 'Link' }
 ]
 
-const getResourceTypeIcon = (type: string) => {
-  const icons: Record<string, string> = {
+const getResourceTypeIcon = (type: ResourceType) => {
+  const icons: Record<ResourceType, string> = {
     'Document': 'i-heroicons-document-text',
     'Video': 'i-heroicons-video-camera',
     'Image': 'i-heroicons-photo',
