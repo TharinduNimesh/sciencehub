@@ -55,6 +55,7 @@
                 :rows="paginatedStudents"
                 :loading="false"
                 :processing-ids="processingIds"
+                @deactivate="handleDeactivate"
                 @delete="handleDelete"
               />
             </div>
@@ -207,12 +208,15 @@
 
 <script setup lang="ts">
 import { isMobileScreen } from "~/lib/utils";
+import { useStudents } from "~/composables/useStudents";
+import type { StudentDetails } from "~/composables/useStudents";
 import type { Invitation } from "~/types/supabase";
 
 // Page meta
 definePageMeta({ layout: "console" });
 
 // Composables
+const { getStudents, toggleStudentStatus } = useStudents();
 const {
   createInvitation,
   fetchInvitations,
@@ -255,32 +259,7 @@ if (import.meta.client) {
 }
 
 // Students state
-const students = ref([
-  {
-    id: 1,
-    name: "John Doe",
-    email: "john.doe@example.com",
-    grade: 10,
-    paymentStatus: "Paid",
-    status: "Active",
-  },
-  {
-    id: 2,
-    name: "Jane Smith",
-    email: "jane.smith@example.com",
-    grade: 11,
-    paymentStatus: "Unpaid",
-    status: "Active",
-  },
-  {
-    id: 3,
-    name: "Alex Johnson",
-    email: "alex.j@example.com",
-    grade: 9,
-    paymentStatus: "Paid",
-    status: "Inactive",
-  },
-]);
+const students = ref<StudentDetails[]>([]);
 
 // Invitations state
 const invitations = ref<Invitation[]>([]);
@@ -295,7 +274,8 @@ const filteredStudents = computed(() => {
       filters.value.grade === undefined ||
       student.grade === filters.value.grade;
     const matchesStatus =
-      !filters.value.status || student.status === filters.value.status;
+      !filters.value.status || 
+      (filters.value.status === 'active' ? student.is_active : !student.is_active);
     return matchesSearch && matchesGrade && matchesStatus;
   });
 });
@@ -388,6 +368,18 @@ const handleInvite = async (formData: {
 };
 
 // Data loading functions
+const loadStudents = async () => {
+  try {
+    isReloadingStudents.value = true;
+    students.value = await getStudents();
+  } catch (error) {
+    console.error("Failed to load students:", error);
+    showError("Failed to load students. Please try again.");
+  } finally {
+    isReloadingStudents.value = false;
+  }
+};
+
 const loadInvitations = async () => {
   try {
     isLoading.value = true;
@@ -406,18 +398,7 @@ const loadInvitations = async () => {
 
 const reloadInvitations = () => loadInvitations();
 
-const reloadStudents = async () => {
-  try {
-    isReloadingStudents.value = true;
-    // Implement actual student reload logic here
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-  } catch (error) {
-    console.error("Failed to reload students:", error);
-    showError("Failed to reload students. Please try again.");
-  } finally {
-    isReloadingStudents.value = false;
-  }
-};
+const reloadStudents = () => loadStudents();
 
 // Invitation handlers
 const handleResendInvitation = async (invitation: Invitation) => {
@@ -449,6 +430,17 @@ const handleDeleteInvitation = async (invitation: Invitation) => {
 };
 
 // Student handlers
+const handleDeactivate = async (student: StudentDetails) => {
+  await handleAction(student.id, async () => {
+    await toggleStudentStatus(student.id, !student.is_active);
+    const studentToUpdate = students.value.find((s) => s.id === student.id);
+    if (studentToUpdate) {
+      studentToUpdate.is_active = !student.is_active;
+    }
+    showSuccess(`Student has been ${student.is_active ? 'deactivated' : 'activated'} successfully`);
+  });
+};
+
 const handleDelete = async (student: { id: number }) => {
   await handleAction(student.id, async () => {
     students.value = students.value.filter((s) => s.id !== student.id);
@@ -466,5 +458,8 @@ const updateInvitationFilters = (newFilters: any) => {
 };
 
 // Initialize data
-onMounted(loadInvitations);
+onMounted(() => {
+  loadStudents();
+  loadInvitations();
+});
 </script>

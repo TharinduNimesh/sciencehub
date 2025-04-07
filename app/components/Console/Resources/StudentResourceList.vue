@@ -100,8 +100,9 @@
                 </div>
 
                 <UButton
+                  v-if="resource.type !== 'notice'"
                   :color="getResourceActionColor(resource)"
-                  :variant="resource.type === 'notice' ? 'soft' : 'solid'"
+                  variant="solid"
                   size="sm"
                   :icon="getResourceActionIcon(resource)"
                   :ui="{ rounded: 'rounded-full' }"

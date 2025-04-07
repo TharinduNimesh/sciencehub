@@ -35,19 +35,19 @@
     
     <template #payment-data="{ row }">
       <UBadge
-        :color="row.paymentStatus === 'Paid' ? 'green' : 'red'"
+        :color="getBadgeColor(row.current_month_payment_status)"
         variant="soft"
       >
-        {{ row.paymentStatus }}
+        {{ formatPaymentStatus(row.current_month_payment_status) }}
       </UBadge>
     </template>
     
     <template #status-data="{ row }">
       <UBadge
-        :color="row.status === 'Active' ? 'green' : 'gray'"
+        :color="row.is_active ? 'green' : 'gray'"
         variant="soft"
       >
-        {{ row.status }}
+        {{ row.is_active ? 'Active' : 'Inactive' }}
       </UBadge>
     </template>
     
@@ -71,9 +71,11 @@
 </template>
 
 <script setup lang="ts">
+import type { StudentDetails } from '~/composables/useStudents'
+
 defineProps({
   rows: {
-    type: Array,
+    type: Array as PropType<StudentDetails[]>,
     required: true
   },
   loading: {
@@ -93,27 +95,27 @@ const emit = defineEmits<{
   delete: [student: any]
 }>()
 
-// Table columns configuration
 const columns = [
   {
     key: 'name',
-    label: 'Student',
+    label: 'Name'
   },
   {
     key: 'grade',
-    label: 'Grade',
+    label: 'Grade'
   },
   {
     key: 'payment',
-    label: 'Payment Status',
+    label: 'Payment Status'
   },
   {
     key: 'status',
-    label: 'Status',
+    label: 'Status'
   },
   {
     key: 'actions',
     label: '',
+    sortable: false
   }
 ]
 
@@ -126,6 +128,32 @@ const getInitials = (name: string): string => {
     .toUpperCase()
 }
 
+const getBadgeColor = (status: string) => {
+  switch (status) {
+    case 'PAID':
+      return 'green'
+    case 'PENDING':
+      return 'yellow'
+    case 'FREE_PERIOD':
+      return 'blue'
+    default:
+      return 'gray'
+  }
+}
+
+const formatPaymentStatus = (status: string) => {
+  switch (status) {
+    case 'PAID':
+      return 'Paid'
+    case 'PENDING':
+      return 'Pending'
+    case 'FREE_PERIOD':
+      return 'Free Period'
+    default:
+      return status
+  }
+}
+
 const getActionItems = (student: any) => {
   const items = [
     [
@@ -134,24 +162,14 @@ const getActionItems = (student: any) => {
         icon: 'i-heroicons-eye',
         to: `/console/students/${student.id}`
       },
-      {
-        label: 'Edit',
-        icon: 'i-heroicons-pencil-square',
-        click: () => emit('edit', student)
-      },
     ],
     [
       {
-        label: student.status === 'Active' ? 'Deactivate' : 'Activate',
-        icon: student.status === 'Active' 
+        label: student.is_active ? 'Deactivate' : 'Activate',
+        icon: student.is_active 
           ? 'i-heroicons-x-circle' 
           : 'i-heroicons-check-circle',
         click: () => emit('deactivate', student)
-      },
-      {
-        label: 'Delete',
-        icon: 'i-heroicons-trash',
-        click: () => emit('delete', student)
       }
     ]
   ]
