@@ -68,12 +68,12 @@ export default defineAppConfig({
           md: 'px-2 py-1 text-sm',
           lg: 'px-2.5 py-1.5 text-sm'
         },
-        variant: {
-          solid: 'bg-{color}-500 dark:bg-{color}-400 text-white dark:text-gray-900',
-          outline: 'text-{color}-500 dark:text-{color}-400 ring-1 ring-inset ring-{color}-500 dark:ring-{color}-400',
-          soft: 'bg-{color}-50 dark:bg-{color}-400 dark:bg-opacity-10 text-{color}-500 dark:text-{color}-400',
-          subtle: 'bg-{color}-50 dark:bg-{color}-400 dark:bg-opacity-10 text-{color}-500 dark:text-{color}-400'
-        }
+        // variant: {
+        //   solid: 'bg-{color}-500 dark:bg-{color}-400 text-white dark:text-gray-900',
+        //   outline: 'text-{color}-500 dark:text-{color}-400 ring-1 ring-inset ring-{color}-500 dark:ring-{color}-400',
+        //   soft: 'bg-{color}-50 dark:bg-{color}-400 dark:bg-opacity-10 text-{color}-500 dark:text-{color}-400',
+        //   subtle: 'bg-{color}-50 dark:bg-{color}-400 dark:bg-opacity-10 text-{color}-500 border-{color}-600 dark:text-{color}-400'
+        // }
       }
     }
   });

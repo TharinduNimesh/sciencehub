@@ -1,4 +1,5 @@
-interface JoinRequestDB {
+// Database types
+export interface JoinRequestDB {
   id: number
   name: string
   email: string
@@ -8,7 +9,7 @@ interface JoinRequestDB {
   created_at: string
 }
 
-interface JoinRequestStatusDB {
+export interface JoinRequestStatusDB {
   id: number
   status: boolean | null
   updated_at: string | null
@@ -26,7 +27,7 @@ export interface JoinRequest {
   status: 'Pending' | 'Accepted' | 'Rejected'
   requestedAt: string
   acceptedAt: string | null
-  invitationStatus: 'Sent' | 'Accepted' | 'Expired' | null
+  invitationStatus: 'Sent' | 'Accepted' | 'Expired' | 'Deleted' | null
 }
 
 type Database = {
@@ -46,6 +47,7 @@ type Database = {
 
 export const useJoinRequests = () => {
   const supabase = useSupabaseClient<Database>()
+  const { fetchInvitations } = useInvitations()
 
   const createJoinRequest = async (data: Omit<JoinRequestDB, 'id' | 'created_at'>) => {
     const { error, data: newRequest } = await supabase
@@ -60,6 +62,7 @@ export const useJoinRequests = () => {
   }
 
   const fetchJoinRequests = async (): Promise<JoinRequest[]> => {
+    // Fetch join requests
     const { data: requests, error } = await supabase
       .from('join_requests')
       .select(`
@@ -74,21 +77,46 @@ export const useJoinRequests = () => {
       throw error
     }
 
+    // Fetch all invitations
+    const invitations = await fetchInvitations()
+    const invitationsByEmail = new Map(
+      invitations.map(inv => [inv.email.toLowerCase(), inv])
+    )
+
     // Map DB data to frontend format
-    return requests.map(request => ({
-      id: request.id,
-      name: request.name,
-      email: request.email,
-      grade: request.grade,
-      contactNumber: request.mobile,
-      referralSource: request.how_did_find_us,
-      status: !request.join_request_status || request.join_request_status.status === null 
-        ? 'Pending' 
-        : request.join_request_status.status ? 'Accepted' : 'Rejected',
-      requestedAt: request.created_at,
-      acceptedAt: request.join_request_status?.status ? request.join_request_status.updated_at : null,
-      invitationStatus: null
-    }))
+    return requests.map(request => {
+      const invitation = invitationsByEmail.get(request.email.toLowerCase())
+      let invitationStatus: JoinRequest['invitationStatus'] = null
+      const isAccepted = request.join_request_status?.status === true
+
+      // If request is accepted but no invitation found, mark as deleted
+      if (isAccepted && !invitation) {
+        invitationStatus = 'Deleted'
+      } else if (invitation) {
+        if (invitation.status === 'Used') {
+          invitationStatus = 'Accepted'
+        } else if (invitation.status === 'Expired' || invitation.status === 'Revoked') {
+          invitationStatus = 'Expired'
+        } else {
+          invitationStatus = 'Sent'
+        }
+      }
+
+      return {
+        id: request.id,
+        name: request.name,
+        email: request.email,
+        grade: request.grade,
+        contactNumber: request.mobile,
+        referralSource: request.how_did_find_us,
+        status: !request.join_request_status || request.join_request_status.status === null 
+          ? 'Pending' 
+          : request.join_request_status.status ? 'Accepted' : 'Rejected',
+        requestedAt: request.created_at,
+        acceptedAt: request.join_request_status?.status ? request.join_request_status.updated_at : null,
+        invitationStatus
+      }
+    })
   }
 
   const updateRequestStatus = async (id: number, status: boolean) => {

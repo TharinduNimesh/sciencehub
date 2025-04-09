@@ -38,12 +38,16 @@
       <template #actions-data="{ row }">
         <UDropdown
           :items="getActionItems(row)"
+          :disabled="isProcessing(row.id)"
+          :popper="{ arrow: true, placement: 'bottom-start' }"
         >
           <UButton
             color="gray"
             variant="ghost"
             icon="i-heroicons-ellipsis-horizontal"
             :ui="{ rounded: 'rounded-full' }"
+            :loading="isProcessing(row.id)"
+            :disabled="isProcessing(row.id)"
           />
         </UDropdown>
       </template>
@@ -53,18 +57,10 @@
 
 <script setup lang="ts">
 import type { PropType } from 'vue'
+import type { Invitation } from '~/types/supabase'
+import isAdmin from '~/utils/is-admin'
 
-export interface Invitation {
-  id: number
-  name: string
-  email: string
-  grade: number
-  invitedAt: string
-  invitedBy: string
-  status: 'Pending' | 'Accepted' | 'Expired' | 'Revoked'
-}
-
-type StatusColor = 'yellow' | 'green' | 'gray' | 'red'
+type StatusColor = 'yellow' | 'green' | 'red' | 'gray' | 'blue'
 
 const props = defineProps({
   rows: {
@@ -75,6 +71,10 @@ const props = defineProps({
   loading: {
     type: Boolean,
     default: false
+  },
+  processingIds: {
+    type: Array as PropType<number[]>,
+    default: () => []
   }
 })
 
@@ -119,14 +119,22 @@ const formatDate = (date: string) => {
   })
 }
 
-const getStatusColor = (status: string): StatusColor => {
-  const colors: Record<string, StatusColor> = {
+// The status types and colors remain the same
+const getStatusColor = (status: Invitation['status']): StatusColor => {
+  const colors: Record<Invitation['status'], StatusColor> = {
     'Pending': 'yellow',
     'Accepted': 'green',
+    'Used': 'blue',
     'Expired': 'gray',
+    'Rejected': 'red',
     'Revoked': 'red'
   }
-  return colors[status] || 'gray'
+  return colors[status]
+}
+
+// Add isProcessing helper function
+const isProcessing = (invitationId: number) => {
+  return props.processingIds?.includes(invitationId)
 }
 
 // Action items for dropdown
@@ -134,33 +142,38 @@ const getActionItems = (row: Invitation) => {
   const items = []
   const actionGroup = []
 
-  // Resend action for Pending, Expired, or Revoked invitations
-  if (['Pending', 'Expired', 'Revoked'].includes(row.status)) {
+  // Resend action for Pending, Expired, Rejected, or Revoked invitations
+  if (['Pending', 'Expired', 'Rejected', 'Revoked'].includes(row.status)) {
     items.push([{
       label: 'Resend Invitation',
-      icon: 'i-heroicons-arrow-path',
+      icon: 'i-heroicons-paper-airplane',
+      disabled: isProcessing(row.id),
+      loading: isProcessing(row.id),
       click: () => emit('resend', row)
     }])
   }
 
-  // Second group - status dependent actions
   // Only Pending invitations can be revoked
-  if (row.status === 'Pending') {
+  if (row.status === 'Pending' && isAdmin()) {
     actionGroup.push({
       label: 'Revoke Invitation',
       icon: 'i-heroicons-x-mark',
       color: 'red',
+      disabled: isProcessing(row.id),
       click: () => emit('revoke', row)
     })
   }
 
-  // All invitations can be deleted
-  actionGroup.push({
-    label: 'Delete',
-    icon: 'i-heroicons-trash',
-    color: 'red',
-    click: () => emit('delete', row)
-  })
+  // Allow deletion for non-active invitations (Used, Revoked, Expired, Rejected)
+  if (isAdmin() && row.status !== 'Pending') {
+    actionGroup.push({
+      label: 'Delete',
+      icon: 'i-heroicons-trash',
+      color: 'red',
+      disabled: isProcessing(row.id),
+      click: () => emit('delete', row)
+    })
+  }
 
   if (actionGroup.length > 0) {
     items.push(actionGroup)

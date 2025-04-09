@@ -123,7 +123,9 @@ const gradeOptions: Option[] = [
 const statusOptions: Option[] = [
   { label: 'Pending', value: 'Pending' },
   { label: 'Accepted', value: 'Accepted' },
+  { label: 'Used', value: 'Used' },
   { label: 'Expired', value: 'Expired' },
+  { label: 'Rejected', value: 'Rejected' },
   { label: 'Revoked', value: 'Revoked' }
 ]
 

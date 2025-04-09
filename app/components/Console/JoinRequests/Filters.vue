@@ -117,7 +117,8 @@ const statusOptions: Option[] = [
 const invitationStatusOptions: Option[] = [
   { label: 'Sent', value: 'Sent' },
   { label: 'Accepted', value: 'Accepted' },
-  { label: 'Expired', value: 'Expired' }
+  { label: 'Expired', value: 'Expired' },
+  { label: 'Deleted', value: 'Deleted' }
 ];
 
 const emit = defineEmits(['update:filters']);

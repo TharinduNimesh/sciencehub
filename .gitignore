@@ -22,3 +22,10 @@ logs
 .env
 .env.*
 !.env.example
+
+# AI
+.github/
+
+
+# for prevent conflict
+app/utils/is-student.ts

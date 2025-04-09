@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to ScienceHub - Moderator Invitation</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #1F2937;
+            margin: 0;
+            padding: 0;
+            background-color: #F9FAFB;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            padding: 30px 20px;
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            border-radius: 16px;
+            margin-bottom: 24px;
+        }
+        .header h1 {
+            color: white;
+            margin: 16px 0 8px;
+            font-size: 28px;
+        }
+        .header p {
+            color: rgba(255, 255, 255, 0.9);
+            margin: 0;
+            font-size: 16px;
+        }
+        .logo {
+            width: 120px;
+            height: auto;
+            margin-bottom: 16px;
+        }
+        .content {
+            background: white;
+            padding: 32px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .welcome-message {
+            margin-bottom: 24px;
+            font-size: 16px;
+        }
+        .role-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            background-color: #ECFDF5;
+            color: #059669;
+            border-radius: 9999px;
+            font-weight: 600;
+            font-size: 14px;
+            margin: 8px 0;
+        }
+        .features {
+            margin: 24px 0;
+            padding: 0;
+            list-style: none;
+        }
+        .feature-item {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 16px;
+            padding-left: 28px;
+            position: relative;
+        }
+        .feature-item:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #059669;
+            font-weight: bold;
+        }
+        .button {
+            display: inline-block;
+            padding: 12px 32px;
+            background-color: #059669;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            text-align: center;
+            margin: 24px 0;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .button:hover {
+            background-color: #047857;
+        }
+        .expiry-notice {
+            background-color: #FEF3F2;
+            border-radius: 8px;
+            padding: 12px 16px;
+            color: #991B1B;
+            font-size: 14px;
+            margin-top: 24px;
+        }
+        .footer {
+            text-align: center;
+            padding-top: 24px;
+            color: #6B7280;
+            font-size: 14px;
+            border-top: 1px solid #E5E7EB;
+            margin-top: 32px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <img src="{{logoUrl}}" alt="ScienceHub Logo" class="logo">
+            <h1>Welcome to ScienceHub!</h1>
+            <p>Join Our Teaching Community</p>
+        </div>
+
+        <div class="content">
+            <div class="welcome-message">
+                <p>Dear {{name}},</p>
+                <p>You've been invited to join ScienceHub as a moderator! We're excited to have you join our teaching community where you'll help shape the future of science education.</p>
+                
+                <div class="role-badge">Moderator</div>
+            </div>
+
+            <ul class="features">
+                <li class="feature-item">Create and manage course content</li>
+                <li class="feature-item">Monitor student progress and engagement</li>
+                <li class="feature-item">Access advanced teaching tools</li>
+                <li class="feature-item">Collaborate with other educators</li>
+            </ul>
+
+            <p>Ready to start teaching? Click the button below to create your account:</p>
+            
+            <a href="{{invitationUrl}}" class="button">Join as Moderator</a>
+            
+            <div class="expiry-notice">
+                ⚠️ This invitation will expire on {{expiryDate}}. Please make sure to accept it before then.
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>If you received this invitation by mistake, please ignore this email.</p>
+            <p>&copy; {{currentYear}} ScienceHub. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>

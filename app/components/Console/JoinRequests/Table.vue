@@ -34,8 +34,13 @@
             :color="getInvitationStatusColor(row.invitationStatus)"
             size="sm"
             variant="soft"
+            class="flex items-center gap-1.5 w-fit"
           >
-            {{ row.invitationStatus }}
+            <UIcon
+              :name="getInvitationStatusIcon(row.invitationStatus)"
+              class="w-4 h-4"
+            />
+            {{ row.invitationStatus || 'Not Sent' }}
           </UBadge>
         </template>
         <span v-else class="text-gray-400">-</span>
@@ -44,12 +49,14 @@
       <template #actions-data="{ row }">
         <UDropdown
           :items="getActionItems(row)"
+          :disabled="isProcessing(row.id)"
         >
           <UButton
             color="gray"
             variant="ghost"
             icon="i-heroicons-ellipsis-horizontal"
             :ui="{ rounded: 'rounded-full' }"
+            :loading="isProcessing(row.id)"
           />
         </UDropdown>
       </template>
@@ -72,6 +79,10 @@ const props = defineProps({
   loading: {
     type: Boolean,
     default: false
+  },
+  processingIds: {
+    type: Array as PropType<number[]>,
+    default: () => []
   }
 });
 
@@ -113,10 +124,21 @@ const getInvitationStatusColor = (status: JoinRequest['invitationStatus']): Stat
   const colors: Record<NonNullable<JoinRequest['invitationStatus']>, StatusColor> = {
     'Sent': 'blue',
     'Accepted': 'green',
-    'Expired': 'yellow'
-  };
+    'Expired': 'yellow',
+    'Deleted': 'red'
+  }
   return status ? colors[status] || 'gray' : 'gray';
-};
+}
+
+const getInvitationStatusIcon = (status: JoinRequest['invitationStatus']): string => {
+  const icons: Record<NonNullable<JoinRequest['invitationStatus']>, string> = {
+    'Sent': 'i-heroicons-envelope',
+    'Accepted': 'i-heroicons-check-circle',
+    'Expired': 'i-heroicons-clock',
+    'Deleted': 'i-heroicons-trash'
+  }
+  return status ? icons[status] || 'i-heroicons-minus-circle' : 'i-heroicons-minus-circle'
+}
 
 // Action items based on row status
 const getActionItems = (row: JoinRequest) => {
@@ -154,6 +176,11 @@ const getActionItems = (row: JoinRequest) => {
       click: () => emit('delete', row)
     }]
   ]
+}
+
+// Helper function to check if a request is being processed
+const isProcessing = (requestId: number) => {
+  return props.processingIds?.includes(requestId)
 }
 
 const emit = defineEmits<{
