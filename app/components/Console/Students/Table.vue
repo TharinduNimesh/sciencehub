@@ -71,8 +71,6 @@
 </template>
 
 <script setup lang="ts">
-import type { StudentDetails } from '~/composables/useStudents'
-
 defineProps({
   rows: {
     type: Array as PropType<StudentDetails[]>,

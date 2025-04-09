@@ -1,22 +1,40 @@
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
+export type ClassMethod = 'VirtualRecurringSeries' | 'VirtualSingleSession' | 'InPersonRecurringSeries' | 'InPersonSingleSession'
+
 export interface Database {
   public: {
     Tables: {
       students: {
         Row: {
           id: number
+          user_id: string
           current_grade: number
           date_of_birth: string
-          gender: 'MALE' | 'FEMALE'
-          user_id: string
+          gender: string
           enrolled_at: string
+          is_active: boolean
         }
         Insert: {
+          user_id: string
           current_grade: number
           date_of_birth: string
-          gender: 'MALE' | 'FEMALE'
-          user_id: string
-          enrolled_at?: string
+          gender: string
+          is_active?: boolean
         }
+        Update: Partial<{
+          user_id: string
+          current_grade: number
+          date_of_birth: string
+          gender: string
+          is_active: boolean
+        }>
       }
       student_contact: {
         Row: {
@@ -34,6 +52,12 @@ export interface Database {
           student_id: number
           created_at?: string
         }
+        Update: Partial<{
+          relation: string
+          contact_name: string
+          details: string
+          student_id: number
+        }>
       }
       student_address: {
         Row: {
@@ -51,16 +75,22 @@ export interface Database {
           student_id: number
           created_at?: string
         }
+        Update: Partial<{
+          street: string
+          city: string
+          postal_code: number
+          student_id: number
+        }>
       }
       classes: {
         Row: {
-          id: bigint
+          id: number
           name: string
           description: string | null
           date: string
           start_time: string
           end_time: string
-          method: 'VirtualRecurringSeries' | 'VirtualSingleSession' | 'InPersonRecurringSeries' | 'InPersonSingleSession'
+          method: ClassMethod
           is_active: boolean
           tags: string[]
           created_at: string
@@ -72,11 +102,137 @@ export interface Database {
           date: string
           start_time: string
           end_time: string
-          method: 'VirtualRecurringSeries' | 'VirtualSingleSession' | 'InPersonRecurringSeries' | 'InPersonSingleSession'
+          method: ClassMethod
           is_active?: boolean
-          tags: string[]
+          tags?: string[]
           grade: number
         }
+        Update: Partial<{
+          name: string
+          description: string | null
+          date: string
+          start_time: string
+          end_time: string
+          method: ClassMethod
+          is_active: boolean
+          tags: string[]
+          grade: number
+        }>
+      }
+      join_requests: {
+        Row: {
+          id: number
+          name: string
+          email: string
+          mobile: string
+          grade: number
+          how_did_find_us: string
+          created_at: string
+        }
+        Insert: {
+          name: string
+          email: string
+          mobile: string
+          grade: number
+          how_did_find_us: string
+        }
+        Update: Partial<{
+          name: string
+          email: string
+          mobile: string
+          grade: number
+          how_did_find_us: string
+        }>
+      }
+      join_request_status: {
+        Row: {
+          id: number
+          status: boolean | null
+          updated_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id: number
+          status?: boolean | null
+          updated_at?: string | null
+        }
+        Update: Partial<{
+          status: boolean | null
+          updated_at: string | null
+        }>
+      }
+      class_sessions: {
+        Row: {
+          id: number
+          date: string
+          start_time: string
+          end_time: string
+          is_cancelled: boolean
+          class_id: number
+          created_at: string
+        }
+        Insert: {
+          date: string
+          start_time: string
+          end_time: string
+          is_cancelled?: boolean
+          class_id: number
+        }
+        Update: Partial<{
+          date: string
+          start_time: string
+          end_time: string
+          is_cancelled: boolean
+          class_id: number
+        }>
+      }
+      class_has_student: {
+        Row: {
+          id: number
+          class_id: number
+          student_id: number
+          is_active: boolean
+          joined_at: string
+          active_until: string | null
+        }
+        Insert: {
+          class_id: number
+          student_id: number
+          is_active?: boolean
+          joined_at: string
+          active_until?: string | null
+        }
+        Update: Partial<{
+          class_id: number
+          student_id: number
+          is_active: boolean
+          joined_at: string
+          active_until: string | null
+        }>
+      }
+      class_has_moderator: {
+        Row: {
+          id: number
+          class_id: number
+          moderator_id: number
+          is_active: boolean
+          joined_at: string
+          active_until: string | null
+        }
+        Insert: {
+          class_id: number
+          moderator_id: number
+          is_active?: boolean
+          joined_at: string
+          active_until?: string | null
+        }
+        Update: Partial<{
+          class_id: number
+          moderator_id: number
+          is_active: boolean
+          joined_at: string
+          active_until: string | null
+        }>
       }
       invitations: {
         Row: {
@@ -111,7 +267,7 @@ export interface Database {
       }
       lessons: {
         Row: {
-          id: bigint
+          id: number
           title: string
           description: string
           duration: number
@@ -128,36 +284,53 @@ export interface Database {
           thumbnail_url?: string | null
           is_hidden?: boolean
         }
+        Update: Partial<{
+          title: string
+          description: string
+          duration: number
+          video_url: string
+          thumbnail_url: string | null
+          is_hidden: boolean
+        }>
       }
       lesson_resources: {
         Row: {
-          id: bigint
+          id: number
           type: string
           url: string
-          lesson_id: bigint
+          lesson_id: number
           created_at: string
         }
         Insert: {
           type: string
           url: string
-          lesson_id: bigint
+          lesson_id: number
         }
+        Update: Partial<{
+          type: string
+          url: string
+          lesson_id: number
+        }>
       }
       class_lessons: {
         Row: {
-          id: bigint
-          class_id: bigint
-          lesson_id: bigint
+          id: number
+          class_id: number
+          lesson_id: number
           created_at: string
         }
         Insert: {
-          class_id: bigint
-          lesson_id: bigint
+          class_id: number
+          lesson_id: number
         }
+        Update: Partial<{
+          class_id: number
+          lesson_id: number
+        }>
       }
       learning_resources_and_notices: {
         Row: {
-          id: bigint
+          id: number
           title: string
           description: string | null
           type: 'notice' | 'resource'
@@ -173,19 +346,30 @@ export interface Database {
           url: string
           created_at?: string
         }
+        Update: Partial<{
+          title: string
+          description: string | null
+          type: 'notice' | 'resource'
+          resource_type: 'Document' | 'Video' | 'Image' | 'Link'
+          url: string
+        }>
       }
       class_has_resources: {
         Row: {
-          id: bigint
-          resource_id: bigint
-          class_id: bigint
+          id: number
+          resource_id: number
+          class_id: number
           created_at: string
         }
         Insert: {
-          resource_id: bigint
-          class_id: bigint
+          resource_id: number
+          class_id: number
           created_at?: string
         }
+        Update: Partial<{
+          resource_id: number
+          class_id: number
+        }>
       }
     }
     Views: {
@@ -207,6 +391,15 @@ export interface Database {
         }
       }
     }
+    Functions: {
+      get_new_student_id: {
+        Args: Record<string, never>
+        Returns: number
+      }
+    }
+    Enums: {
+      GENDER: 'MALE' | 'FEMALE' | 'OTHER'
+    }
   }
 }
 
@@ -221,4 +414,35 @@ export interface Invitation {
   expiredAt: string
   invitedBy: string
   status: 'Pending' | 'Expired' | 'Revoked' | 'Rejected' | 'Accepted' | 'Used'
+}
+
+// Add these interface definitions at the end of the file
+export interface ClassSessionWithClass {
+  id: number
+  date: string
+  start_time: string
+  end_time: string
+  is_cancelled: boolean
+  class_id: number
+  classes: {
+    name: string
+    grade: number
+    method: ClassMethod
+  }
+}
+
+export interface ClassWithModerators {
+  id: number
+  name: string
+  grade: number
+  date: string
+  start_time: string
+  end_time: string
+  method: ClassMethod
+  is_active: boolean
+  moderators: Array<{
+    moderators: {
+      name: string
+    }
+  }>
 }

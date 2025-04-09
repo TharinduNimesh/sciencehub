@@ -124,8 +124,53 @@
         </template>
 
         <template v-else>
+          <!-- Empty State -->
+          <div v-if="currentViewMode === 'timetable' && filteredTimetableEntries.length === 0" 
+               class="bg-gray-50 rounded-lg p-12 text-center col-span-full">
+            <div class="mx-auto h-24 w-24 flex items-center justify-center rounded-full bg-primary-50">
+              <UIcon name="i-heroicons-calendar" class="h-12 w-12 text-primary-400" />
+            </div>
+            <h3 class="mt-6 text-xl font-medium text-gray-900">No classes scheduled</h3>
+            <p v-if="isAdmin()" class="mt-2 text-gray-500">
+              Get started by creating a new class and scheduling sessions.
+            </p>
+            <p v-else-if="isStudent()" class="mt-2 text-gray-500">
+              No classes are scheduled for you at the moment.
+            </p>
+            <div v-if="isAdmin()" class="mt-6">
+              <UButton
+                color="primary"
+                label="Create Class"
+                @click="isCreateModalOpen = true"
+                :ui="{ rounded: 'rounded-full' }"
+              />
+            </div>
+          </div>
+
+          <div v-else-if="currentViewMode === 'summary' && filteredClasses.length === 0" 
+               class="bg-gray-50 rounded-lg p-12 text-center col-span-full">
+            <div class="mx-auto h-24 w-24 flex items-center justify-center rounded-full bg-primary-50">
+              <UIcon name="i-heroicons-academic-cap" class="h-12 w-12 text-primary-400" />
+            </div>
+            <h3 class="mt-6 text-xl font-medium text-gray-900">No classes found</h3>
+            <p v-if="isAdmin()" class="mt-2 text-gray-500">
+              Get started by creating your first class.
+            </p>
+            <p v-else-if="isStudent()" class="mt-2 text-gray-500">
+              You are not enrolled in any classes at the moment.
+            </p>
+            <div v-if="isAdmin()" class="mt-6">
+              <UButton
+                color="primary"
+                label="Create Class"
+                @click="isCreateModalOpen = true"
+                :ui="{ rounded: 'rounded-full' }"
+              />
+            </div>
+          </div>
+
           <!-- Timetable View -->
-          <template v-if="currentViewMode === 'timetable'">
+          <template v-else-if="currentViewMode === 'timetable'">
             <ConsoleClassesTimeTableCard
               v-for="entry in paginatedTimetableEntries"
               :key="entry.id"

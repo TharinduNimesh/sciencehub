@@ -161,8 +161,6 @@
 </template>
 
 <script setup lang="ts">
-import type { StudentDetailedInfo, StudentContact, StudentAddress, StudentMonthlyFee } from '~/composables/useStudents'
-
 definePageMeta({
   layout: "console"
 })

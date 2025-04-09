@@ -1,4 +1,5 @@
-interface JoinRequestDB {
+// Database types
+export interface JoinRequestDB {
   id: number
   name: string
   email: string
@@ -8,7 +9,7 @@ interface JoinRequestDB {
   created_at: string
 }
 
-interface JoinRequestStatusDB {
+export interface JoinRequestStatusDB {
   id: number
   status: boolean | null
   updated_at: string | null

@@ -208,8 +208,6 @@
 
 <script setup lang="ts">
 import { isMobileScreen } from "~/lib/utils";
-import { useStudents } from "~/composables/useStudents";
-import type { StudentDetails } from "~/composables/useStudents";
 import type { Invitation } from "~/types/supabase";
 
 // Page meta

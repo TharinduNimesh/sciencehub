@@ -12,8 +12,7 @@
                         <p class="text-sm text-gray-500">{{ authStore.user?.role?.charAt(0).toUpperCase() +
                             authStore.user?.role?.slice(1).toLowerCase() }}</p>
                     </div>
-                    <UAvatar :src="authStore.user?.avatar || 'https://placehold.co/40x40'" :alt="authStore.user?.name"
-                        size="sm" />
+                    <UAvatar :alt="authStore.user?.name" />
                 </div>
             </UDropdown>
         </div>
@@ -27,22 +26,23 @@ import { useAuthStore } from '~/stores/auth'
 const sidebarStore = useSidebarStore()
 const authStore = useAuthStore()
 
-const menuItems = [[
-    {
-        label: 'My Profile',
-        icon: 'i-heroicons-user-circle-20-solid',
-        to: '/console/profile'
-    },
-    {
-        label: 'Documentation',
-        icon: 'i-heroicons-book-open-20-solid',
-        to: '/docs'
-    }],
-[{
-    label: 'Logout',
-    icon: 'i-heroicons-arrow-right-on-rectangle-20-solid',
-    shortcuts: ['⌘', 'L'],
-    click: () => authStore.logout()
-}]
+const menuItems = [
+    // [
+    // {
+    //     label: 'My Profile',
+    //     icon: 'i-heroicons-user-circle-20-solid',
+    //     to: '/console/profile'
+    // },
+    // {
+    //     label: 'Documentation',
+    //     icon: 'i-heroicons-book-open-20-solid',
+    //     to: '/docs'
+    // }],
+    [{
+        label: 'Logout',
+        icon: 'i-heroicons-arrow-right-on-rectangle-20-solid',
+        shortcuts: ['⌘', 'L'],
+        click: () => authStore.logout()
+    }]
 ]
 </script>

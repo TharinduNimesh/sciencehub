@@ -5,7 +5,7 @@ import { serverSupabaseServiceRole } from '#supabase/server'
 export default defineEventHandler(async (event: H3Event) => {
   try {
     const client = serverSupabaseServiceRole(event)
-    const { invitation, baseUrl } = await readBody(event)
+    const { invitation } = await readBody(event)
     
     // Format expiry date
     const expiryDate = new Date(invitation.expired_at).toLocaleDateString('en-US', {
@@ -14,38 +14,51 @@ export default defineEventHandler(async (event: H3Event) => {
       day: 'numeric'
     })
 
+    // Verify the invitation exists
+    const { data: existingInvitation, error: invitationError } = await client
+      .from('invitations')
+      .select('*')
+      .eq('email', invitation.email)
+      .eq('role', invitation.role)
+      .single()
+
+    if (invitationError || !existingInvitation) {
+      throw createError({
+        statusCode: 404,
+        message: 'Invitation not found'
+      })
+    }
+
+    const baseUrl = process.env.APP_URL || 'http://localhost:3000'
+
     // Generate invitation URL with token and email
-    const invitationUrl = `${baseUrl}/auth/invitation?token=${invitation.token}&email=${encodeURIComponent(invitation.email)}`
-    
-    // Get logo URL
-    const logoUrl = `${baseUrl}/images/logo.svg`
+    const invitationUrl = `${baseUrl}/auth/invitation?token=${existingInvitation.token}&email=${encodeURIComponent(existingInvitation.email)}`
 
     // Determine which template to use based on role
     const template = invitation.role === 'STUDENT' ? 'student-invitation' : 'moderator-invitation'
 
     // Prepare email context
     const emailContext = {
-      name: invitation.name,
-      role: invitation.role.toLowerCase(),
-      grade: invitation.metadata?.grade ? String(invitation.metadata.grade) : '',
+      name: existingInvitation.name,
+      role: existingInvitation.role.toLowerCase(),
+      grade: existingInvitation.metadata?.grade ? String(existingInvitation.metadata.grade) : '',
       invitationUrl,
-      logoUrl,
       expiryDate,
       currentYear: new Date().getFullYear().toString()
     }
 
     // Send email
     await sendMail({
-      to: invitation.email,
-      subject: `Welcome to ScienceHub - ${invitation.role === 'STUDENT' ? 'Student Invitation' : 'Join Our Teaching Team'}`,
+      to: existingInvitation.email,
+      subject: `Welcome to ScienceHub - ${existingInvitation.role === 'STUDENT' ? 'Student Invitation' : 'Join Our Teaching Team'}`,
       template,
       context: emailContext
     })
     
     const { error } = await client
       .from('invitations')
-      .update({ is_mail_sent: true })
-      .eq('id', invitation.id)
+      .update({ is_mail_sent: true, invited_at: new Date() })
+      .eq('id', existingInvitation.id)
 
     if (error) throw error
 

@@ -185,6 +185,7 @@
             <p class="text-sm text-gray-500 mt-1">Access all your study materials and announcements</p>
           </div>
 
+          <!-- Search and refresh buttons -->
           <div class="flex gap-2 w-full sm:w-auto">
             <UButton
               icon="i-heroicons-arrow-path"
@@ -205,8 +206,20 @@
           </div>
         </div>
 
+        <!-- Empty State -->
+        <div v-if="!isRefreshingResources && filteredStudentResources.length === 0" class="bg-gray-50 rounded-lg p-12 text-center">
+          <div class="mx-auto h-24 w-24 flex items-center justify-center rounded-full bg-primary-50">
+            <UIcon name="i-heroicons-document-text" class="h-12 w-12 text-primary-400" />
+          </div>
+          <h3 class="mt-6 text-xl font-medium text-gray-900">No resources found</h3>
+          <p class="mt-2 text-gray-500">
+            {{ studentSearch ? 'No resources match your search criteria.' : 'No learning resources have been shared with you yet.' }}
+          </p>
+        </div>
+
         <!-- Combined Resources List -->
         <StudentResourceList
+          v-else
           :resources="paginatedStudentResources"
           v-model:current-page="currentPage"
           :total-items="filteredStudentResources.length"

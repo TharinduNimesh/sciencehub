@@ -226,7 +226,7 @@ export const useClasses = () => {
       const { data, error } = await supabase
         .from('time_table')
         .select('*')
-        .gte('date', new Date().toISOString().split('T')[0]) // Only future sessions
+        .gte('date', new Date().toISOString().split('T')[0]) // Including today
         .order('date', { ascending: true })
 
       if (error) throw error
