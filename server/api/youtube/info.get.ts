@@ -45,8 +45,11 @@ function findVideoDataInInitialData(data: any): any {
     'contents.twoColumnWatchNextResults.results.results.contents[0].videoPrimaryInfoRenderer',
     'contents.twoColumnWatchNextResults.results.results.contents[1].videoSecondaryInfoRenderer',
     'playerOverlays.playerOverlayRenderer.videoDetails',
-    'microformat.playerMicroformatRenderer'
+    'microformat.playerMicroformatRenderer',
+    'contents.playerOverlayRenderer.videoDetails'
   ];
+  
+  let foundValue = null;
   
   for (const path of paths) {
     const value = path.split('.').reduce((obj, key) => {
@@ -59,8 +62,71 @@ function findVideoDataInInitialData(data: any): any {
     
     if (value) {
       console.log('[YouTube Info] Found video data in path:', path);
-      return value;
+      console.log('[YouTube Info] Video data structure:', JSON.stringify(value, null, 2));
+      foundValue = value;
+      break;
     }
+  }
+  
+  return foundValue;
+}
+
+function extractVideoDetailsFromData(videoData: any, url: string): any {
+  if (!videoData) return null;
+
+  console.log('[YouTube Info] Extracting details from data structure');
+  
+  // Handle different data structures
+  const videoId = videoData.videoId || 
+                 new URL(url).searchParams.get('v') || 
+                 '';
+                 
+  let title = '';
+  if (videoData.title?.simpleText) {
+    title = videoData.title.simpleText;
+  } else if (videoData.title?.runs?.[0]?.text) {
+    title = videoData.title.runs[0].text;
+  } else if (typeof videoData.title === 'string') {
+    title = videoData.title;
+  }
+  
+  console.log('[YouTube Info] Extracted title:', title);
+  
+  let description = '';
+  if (videoData.description?.simpleText) {
+    description = videoData.description.simpleText;
+  } else if (videoData.description?.runs) {
+    description = videoData.description.runs.map((r: any) => r.text).join('');
+  } else if (typeof videoData.description === 'string') {
+    description = videoData.description;
+  }
+  
+  console.log('[YouTube Info] Found description:', !!description);
+  
+  let duration = '0';
+  if (videoData.lengthSeconds) {
+    duration = videoData.lengthSeconds;
+  } else if (videoData.duration) {
+    duration = videoData.duration;
+  } else if (videoData.durationSeconds) {
+    duration = videoData.durationSeconds;
+  }
+  
+  console.log('[YouTube Info] Found duration:', duration);
+  
+  // Only return if we have at least a video ID and title
+  if (videoId && title) {
+    return {
+      videoId,
+      title,
+      shortDescription: description,
+      lengthSeconds: duration,
+      thumbnail: {
+        thumbnails: [{
+          url: `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`
+        }]
+      }
+    };
   }
   
   return null;
@@ -109,7 +175,7 @@ export default defineEventHandler(async (event: H3Event) => {
     
     // Method 1: Try to find and parse ytInitialPlayerResponse
     $('script').each((_, element) => {
-      if (videoDetails) return false; // Skip if we already have details
+      if (videoDetails) return false;
       
       const scriptContent = $(element).html() || '';
       if (scriptContent.includes('ytInitialPlayerResponse')) {
@@ -136,19 +202,10 @@ export default defineEventHandler(async (event: H3Event) => {
       const videoData = findVideoDataInInitialData(ytData);
       
       if (videoData) {
-        // Convert the found data into our required format
-        videoDetails = {
-          videoId: videoData.videoId || new URL(url as string).searchParams.get('v'),
-          title: videoData.title?.simpleText || videoData.title?.runs?.[0]?.text || '',
-          shortDescription: videoData.description?.simpleText || videoData.description?.runs?.map((r: any) => r.text).join('') || '',
-          lengthSeconds: videoData.lengthInSeconds || videoData.duration || '0',
-          thumbnail: {
-            thumbnails: [{
-              url: videoData.thumbnail?.thumbnails?.[0]?.url || `https://i.ytimg.com/vi/${videoData.videoId}/maxresdefault.jpg`
-            }]
-          }
-        };
-        console.log('[YouTube Info] Found video details in ytInitialData');
+        videoDetails = extractVideoDetailsFromData(videoData, url as string);
+        if (videoDetails) {
+          console.log('[YouTube Info] Successfully extracted details from ytInitialData');
+        }
       }
     }
 
@@ -195,7 +252,7 @@ export default defineEventHandler(async (event: H3Event) => {
       }
     }
 
-    if (!videoDetails || !videoDetails.title) {
+    if (!videoDetails?.title) {
       console.error('[YouTube Info] Failed to extract video details using all methods');
       throw createError({
         statusCode: 500,
