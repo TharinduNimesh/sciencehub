@@ -16,17 +16,6 @@ interface YouTubeError extends Error {
   statusCode?: number;
 }
 
-// Fallback regex patterns for video data extraction
-const VIDEO_ID_REGEX = /["']videoId["']\s*:\s*["']([^"']+)["']/;
-const TITLE_REGEX = /<meta\s+name=["']title["']\s+content=["']([^"']+)["']/i;
-const DESCRIPTION_REGEX = /<meta\s+name=["']description["']\s+content=["']([^"']+)["']/i;
-const LENGTH_SECONDS_REGEX = /["']lengthSeconds["']\s*:\s*["']?(\d+)["']?/;
-
-function extractFromRegex(content: string, regex: RegExp): string {
-  const match = content.match(regex);
-  return match?.[1] || '';
-}
-
 export default defineEventHandler(async (event: H3Event) => {
   try {
     const { url } = getQuery(event);
@@ -61,37 +50,55 @@ export default defineEventHandler(async (event: H3Event) => {
     const html = await response.text();
     console.log('[YouTube Info] HTML content length:', html.length);
     
-    // Try primary method first
-    const ytPlayerDataMatch = html.match(/ytInitialPlayerResponse\s*=\s*({.+?});/);
-    console.log('[YouTube Info] Player data match found:', !!ytPlayerDataMatch);
+    // Load HTML content into Cheerio
+    const $ = load(html);
     
+    // Try primary method first (using script tags)
     let videoDetails = null;
-    let playerData = null;
-
-    if (ytPlayerDataMatch?.[1]) {
-      try {
-        playerData = JSON.parse(ytPlayerDataMatch[1]);
-        console.log('[YouTube Info] Successfully parsed player data');
-        console.log('[YouTube Info] Player data keys:', Object.keys(playerData));
-        
-        if (playerData.videoDetails) {
-          videoDetails = playerData.videoDetails;
-          console.log('[YouTube Info] Found video details in player data');
+    
+    // Find the script tag containing ytInitialPlayerResponse
+    $('script').each((_, element) => {
+      const scriptContent = $(element).html() || '';
+      if (scriptContent.includes('ytInitialPlayerResponse')) {
+        try {
+          const match = scriptContent.match(/ytInitialPlayerResponse\s*=\s*({.+?});/);
+          if (match?.[1]) {
+            const playerData = JSON.parse(match[1]);
+            if (playerData.videoDetails) {
+              videoDetails = playerData.videoDetails;
+              return false; // Break the loop
+            }
+          }
+        } catch (e) {
+          console.error('[YouTube Info] Failed to parse player data from script:', e);
         }
-      } catch (parseError) {
-        console.error('[YouTube Info] Failed to parse player data:', parseError);
       }
-    }
+    });
 
-    // If primary method fails, try fallback method
+    // If primary method fails, use Cheerio to extract information
     if (!videoDetails) {
-      console.log('[YouTube Info] Using fallback method to extract video details');
+      console.log('[YouTube Info] Using Cheerio fallback method');
       
-      const videoId = extractFromRegex(html, VIDEO_ID_REGEX);
-      const title = extractFromRegex(html, TITLE_REGEX);
-      const description = extractFromRegex(html, DESCRIPTION_REGEX);
-      const lengthSeconds = extractFromRegex(html, LENGTH_SECONDS_REGEX);
+      const videoId = new URL(url as string).searchParams.get('v') || '';
+      const title = $('meta[property="og:title"]').attr('content') || 
+                   $('title').text().replace(' - YouTube', '').trim();
+      const description = $('meta[property="og:description"]').attr('content') || 
+                         $('meta[name="description"]').attr('content') || '';
       
+      // Try to find duration in various meta tags
+      let duration = '0';
+      const durationStr = $('meta[itemprop="duration"]').attr('content') || '';
+      if (durationStr) {
+        // Convert ISO 8601 duration to seconds
+        const match = durationStr.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+        if (match) {
+          const hours = parseInt(match[1] || '0');
+          const minutes = parseInt(match[2] || '0');
+          const seconds = parseInt(match[3] || '0');
+          duration = String(hours * 3600 + minutes * 60 + seconds);
+        }
+      }
+
       if (!videoId) {
         throw createError({
           statusCode: 500,
@@ -101,9 +108,9 @@ export default defineEventHandler(async (event: H3Event) => {
 
       videoDetails = {
         videoId,
-        title: title.replace(' - YouTube', '').trim(),
+        title,
         shortDescription: description,
-        lengthSeconds: lengthSeconds || '0',
+        lengthSeconds: duration,
         thumbnail: {
           thumbnails: [{
             url: `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`,
@@ -113,10 +120,10 @@ export default defineEventHandler(async (event: H3Event) => {
         }
       };
       
-      console.log('[YouTube Info] Extracted video details using fallback method:', {
+      console.log('[YouTube Info] Extracted video details using Cheerio:', {
         videoId,
-        title: videoDetails.title,
-        hasDescription: !!description
+        title,
+        hasDuration: !!duration
       });
     }
 
