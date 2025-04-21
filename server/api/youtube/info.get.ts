@@ -82,7 +82,10 @@ function extractVideoDetailsFromData(videoData: any, url: string): any {
                  '';
                  
   let title = '';
-  if (videoData.title?.simpleText) {
+  // Handle playerOverlayVideoDetailsRenderer structure
+  if (videoData.playerOverlayVideoDetailsRenderer?.title?.simpleText) {
+    title = videoData.playerOverlayVideoDetailsRenderer.title.simpleText;
+  } else if (videoData.title?.simpleText) {
     title = videoData.title.simpleText;
   } else if (videoData.title?.runs?.[0]?.text) {
     title = videoData.title.runs[0].text;
@@ -93,7 +96,12 @@ function extractVideoDetailsFromData(videoData: any, url: string): any {
   console.log('[YouTube Info] Extracted title:', title);
   
   let description = '';
-  if (videoData.description?.simpleText) {
+  if (videoData.playerOverlayVideoDetailsRenderer?.subtitle?.runs) {
+    // Extract subtitle runs as description
+    description = videoData.playerOverlayVideoDetailsRenderer.subtitle.runs
+      .map((r: any) => r.text)
+      .join('');
+  } else if (videoData.description?.simpleText) {
     description = videoData.description.simpleText;
   } else if (videoData.description?.runs) {
     description = videoData.description.runs.map((r: any) => r.text).join('');
@@ -103,6 +111,7 @@ function extractVideoDetailsFromData(videoData: any, url: string): any {
   
   console.log('[YouTube Info] Found description:', !!description);
   
+  // Try to find duration in multiple locations and formats
   let duration = '0';
   if (videoData.lengthSeconds) {
     duration = videoData.lengthSeconds;
@@ -110,6 +119,20 @@ function extractVideoDetailsFromData(videoData: any, url: string): any {
     duration = videoData.duration;
   } else if (videoData.durationSeconds) {
     duration = videoData.durationSeconds;
+  } else if (videoData.playerOverlayVideoDetailsRenderer?.durationText?.simpleText) {
+    // Convert MM:SS format to seconds
+    const durationText = videoData.playerOverlayVideoDetailsRenderer.durationText.simpleText;
+    const [minutes = '0', seconds = '0'] = durationText.split(':').map(Number);
+    duration = String(minutes * 60 + seconds);
+  } else if (videoData.thumbnailOverlays) {
+    // Try to find duration in thumbnail overlays
+    const overlay = videoData.thumbnailOverlays.find((o: any) => 
+      o.thumbnailOverlayTimeStatusRenderer?.text?.simpleText);
+    if (overlay) {
+      const durationText = overlay.thumbnailOverlayTimeStatusRenderer.text.simpleText;
+      const [minutes = '0', seconds = '0'] = durationText.split(':').map(Number);
+      duration = String(minutes * 60 + seconds);
+    }
   }
   
   console.log('[YouTube Info] Found duration:', duration);
