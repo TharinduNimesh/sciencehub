@@ -16,6 +16,17 @@ interface YouTubeError extends Error {
   statusCode?: number;
 }
 
+// Fallback regex patterns for video data extraction
+const VIDEO_ID_REGEX = /["']videoId["']\s*:\s*["']([^"']+)["']/;
+const TITLE_REGEX = /<meta\s+name=["']title["']\s+content=["']([^"']+)["']/i;
+const DESCRIPTION_REGEX = /<meta\s+name=["']description["']\s+content=["']([^"']+)["']/i;
+const LENGTH_SECONDS_REGEX = /["']lengthSeconds["']\s*:\s*["']?(\d+)["']?/;
+
+function extractFromRegex(content: string, regex: RegExp): string {
+  const match = content.match(regex);
+  return match?.[1] || '';
+}
+
 export default defineEventHandler(async (event: H3Event) => {
   try {
     const { url } = getQuery(event);
@@ -32,7 +43,9 @@ export default defineEventHandler(async (event: H3Event) => {
     console.log('[YouTube Info] Fetching video page...');
     const response = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
       }
     });
     
@@ -48,34 +61,67 @@ export default defineEventHandler(async (event: H3Event) => {
     const html = await response.text();
     console.log('[YouTube Info] HTML content length:', html.length);
     
+    // Try primary method first
     const ytPlayerDataMatch = html.match(/ytInitialPlayerResponse\s*=\s*({.+?});/);
     console.log('[YouTube Info] Player data match found:', !!ytPlayerDataMatch);
     
-    if (!ytPlayerDataMatch?.[1]) {
-      console.error('[YouTube Info] Could not extract player data from HTML');
-      throw createError({
-        statusCode: 500,
-        message: 'Could not extract video data'
-      });
+    let videoDetails = null;
+    let playerData = null;
+
+    if (ytPlayerDataMatch?.[1]) {
+      try {
+        playerData = JSON.parse(ytPlayerDataMatch[1]);
+        console.log('[YouTube Info] Successfully parsed player data');
+        console.log('[YouTube Info] Player data keys:', Object.keys(playerData));
+        
+        if (playerData.videoDetails) {
+          videoDetails = playerData.videoDetails;
+          console.log('[YouTube Info] Found video details in player data');
+        }
+      } catch (parseError) {
+        console.error('[YouTube Info] Failed to parse player data:', parseError);
+      }
     }
 
-    let playerData;
-    try {
-      playerData = JSON.parse(ytPlayerDataMatch[1]);
-      console.log('[YouTube Info] Successfully parsed player data');
-    } catch (parseError) {
-      console.error('[YouTube Info] Failed to parse player data:', parseError);
-      throw createError({
-        statusCode: 500,
-        message: 'Failed to parse video data'
+    // If primary method fails, try fallback method
+    if (!videoDetails) {
+      console.log('[YouTube Info] Using fallback method to extract video details');
+      
+      const videoId = extractFromRegex(html, VIDEO_ID_REGEX);
+      const title = extractFromRegex(html, TITLE_REGEX);
+      const description = extractFromRegex(html, DESCRIPTION_REGEX);
+      const lengthSeconds = extractFromRegex(html, LENGTH_SECONDS_REGEX);
+      
+      if (!videoId) {
+        throw createError({
+          statusCode: 500,
+          message: 'Could not extract video ID'
+        });
+      }
+
+      videoDetails = {
+        videoId,
+        title: title.replace(' - YouTube', '').trim(),
+        shortDescription: description,
+        lengthSeconds: lengthSeconds || '0',
+        thumbnail: {
+          thumbnails: [{
+            url: `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`,
+            width: 1280,
+            height: 720
+          }]
+        }
+      };
+      
+      console.log('[YouTube Info] Extracted video details using fallback method:', {
+        videoId,
+        title: videoDetails.title,
+        hasDescription: !!description
       });
     }
-
-    const videoDetails = playerData.videoDetails;
-    console.log('[YouTube Info] Video details present:', !!videoDetails);
 
     if (!videoDetails) {
-      console.error('[YouTube Info] Video details not found in player data');
+      console.error('[YouTube Info] Failed to extract video details using both methods');
       throw createError({
         statusCode: 500,
         message: 'Video details not found'
