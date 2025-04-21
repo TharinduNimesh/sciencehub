@@ -86,6 +86,11 @@ function findStructuredDescription($: cheerio.CheerioAPI, data: any): string {
               .map((r: any) => r.text)
               .join('');
           }
+          if (item.videoDescriptionHeaderRenderer?.description?.runs) {
+            return item.videoDescriptionHeaderRenderer.description.runs
+              .map((r: any) => r.text)
+              .join('');
+          }
         }
       }
     } catch (e) {
@@ -102,9 +107,28 @@ function findStructuredDescription($: cheerio.CheerioAPI, data: any): string {
           .map((r: any) => r.text)
           .join('');
       }
+      // Try to find in description section renderer
+      if (content?.structuredDescriptionContentRenderer?.items) {
+        for (const item of content.structuredDescriptionContentRenderer.items) {
+          if (item.expandableVideoDescriptionBodyRenderer?.descriptionBodyText?.runs) {
+            return item.expandableVideoDescriptionBodyRenderer.descriptionBodyText.runs
+              .map((r: any) => r.text)
+              .join('');
+          }
+        }
+      }
     }
   } catch (e) {
     console.error('[YouTube Info] Error parsing secondary info:', e);
+  }
+
+  // Try to find in video description section
+  try {
+    const description = data?.engagementPanels?.[1]?.engagementPanelSectionListRenderer?.content
+      ?.structuredDescriptionContentRenderer?.items?.[0]?.videoDescriptionBodyRenderer?.attributedDescription?.content;
+    if (description) return description;
+  } catch (e) {
+    console.error('[YouTube Info] Error parsing video description section:', e);
   }
 
   // Try to find in meta tags as last resort
@@ -116,22 +140,55 @@ function findStructuredDescription($: cheerio.CheerioAPI, data: any): string {
   return '';
 }
 
-function findVideoDataInInitialData(data: any): any {
+function findVideoDataInInitialData(data: any, url: string): any {
   if (!data) return null;
   
   // Try to find video data in different possible paths
   const paths = [
+    'playerOverlays.playerOverlayRenderer.videoDetails',
     'contents.twoColumnWatchNextResults.results.results.contents[0].videoPrimaryInfoRenderer',
     'contents.twoColumnWatchNextResults.results.results.contents[1].videoSecondaryInfoRenderer',
-    'playerOverlays.playerOverlayRenderer.videoDetails',
     'microformat.playerMicroformatRenderer',
-    'contents.playerOverlayRenderer.videoDetails',
-    'playerOverlays.playerOverlayRenderer.content.reelsPlayerOverlayRenderer.reelPlayerHeaderSupportedRenderers.reelPlayerHeaderRenderer',
-    'contents.twoColumnWatchNextResults.results.results.contents[0].reelPlayerHeaderSupportedRenderers.reelPlayerHeaderRenderer'
+    'contents.playerOverlayRenderer.videoDetails'
   ];
   
   let foundData: any = {};
   
+  // First try to find duration specifically
+  const durationPaths = [
+    'playerOverlays.playerOverlayRenderer.videoDurationSeconds',
+    'contents.twoColumnWatchNextResults.results.results.contents[0].videoPrimaryInfoRenderer.lengthText.simpleText',
+    'contents.twoColumnWatchNextResults.results.results.contents[0].videoPrimaryInfoRenderer.thumbnailOverlays[0].thumbnailOverlayTimeStatusRenderer.text.simpleText',
+    'playerOverlays.playerOverlayRenderer.durationText.simpleText'
+  ];
+
+  for (const path of durationPaths) {
+    const value = path.split('.').reduce((obj, key) => {
+      if (key.includes('[')) {
+        const [arrayKey, index] = key.split(/[\[\]]/);
+        return (obj?.[arrayKey] || [])[parseInt(index)] || null;
+      }
+      return obj?.[key] || null;
+    }, data);
+
+    if (value) {
+      if (typeof value === 'string' && value.includes(':')) {
+        // Convert MM:SS format to seconds
+        const parts = value.split(':').map(Number);
+        if (parts.length === 2) {
+          foundData.lengthSeconds = String(parts[0] * 60 + parts[1]);
+          console.log('[YouTube Info] Found duration from time format:', value, foundData.lengthSeconds);
+          break;
+        }
+      } else if (!isNaN(value)) {
+        foundData.lengthSeconds = String(value);
+        console.log('[YouTube Info] Found duration in seconds:', foundData.lengthSeconds);
+        break;
+      }
+    }
+  }
+  
+  // Then find other video data
   for (const path of paths) {
     const value = path.split('.').reduce((obj, key) => {
       if (Array.isArray(obj)) {
@@ -145,71 +202,59 @@ function findVideoDataInInitialData(data: any): any {
       console.log('[YouTube Info] Found video data in path:', path);
       console.log('[YouTube Info] Video data structure:', JSON.stringify(value, null, 2));
       
-      // Merge data from different sections
-      if (value.title) foundData.title = value.title;
-      if (value.description) foundData.description = value.description;
-      if (value.lengthText || value.durationText) foundData.duration = value.lengthText || value.durationText;
-      if (value.videoDetails) Object.assign(foundData, value.videoDetails);
-      if (value.timeDescription) foundData.duration = value.timeDescription;
-    }
-  }
-  
-  // Additional paths for description
-  const descriptionPaths = [
-    'engagementPanels[0].engagementPanelSectionListRenderer.content.structuredDescriptionContentRenderer.items[0].expandableVideoDescriptionBodyRenderer.descriptionBodyText.runs',
-    'engagementPanels[1].engagementPanelSectionListRenderer.content.structuredDescriptionContentRenderer.items[0].expandableVideoDescriptionBodyRenderer.descriptionBodyText.runs',
-    'contents.twoColumnWatchNextResults.results.results.contents[1].videoSecondaryInfoRenderer.description.runs',
-    'contents.twoColumnWatchNextResults.results.results.contents[0].videoPrimaryInfoRenderer.description.runs',
-    'contents.twoColumnWatchNextResults.results.results.contents[1].structuredDescriptionContentRenderer.items[0].videoDescriptionHeaderRenderer.description.runs'
-  ];
-  
-  // Try each description path
-  for (const path of descriptionPaths) {
-    let value = path.split('.').reduce((obj, key) => {
-      if (key.includes('[')) {
-        const [arrayKey, index] = key.split(/[\[\]]/);
-        return (obj?.[arrayKey] || [])[parseInt(index)] || null;
-      }
-      return obj?.[key] || null;
-    }, data);
-    
-    if (Array.isArray(value)) {
-      foundData.descriptionRuns = value;
-      console.log('[YouTube Info] Found description in path:', path);
-      break;
-    }
-  }
-
-  // Additional paths for duration
-  const durationPaths = [
-    'contents.twoColumnWatchNextResults.results.results.contents[0].videoPrimaryInfoRenderer.videoActions.menuRenderer.topLevelButtons[0].segmentedLikeDislikeButtonRenderer.likeCountWithDurationAriaLabel.accessibilityData.label',
-    'microformat.playerMicroformatRenderer.lengthSeconds',
-    'videoDetails.lengthSeconds',
-    'contents.twoColumnWatchNextResults.results.results.contents[0].videoPrimaryInfoRenderer.dateText.simpleText'
-  ];
-
-  for (const path of durationPaths) {
-    let value = path.split('.').reduce((obj, key) => {
-      if (key.includes('[')) {
-        const [arrayKey, index] = key.split(/[\[\]]/);
-        return (obj?.[arrayKey] || [])[parseInt(index)] || null;
-      }
-      return obj?.[key] || null;
-    }, data);
-
-    if (value) {
-      // Try to extract duration from aria label if present
-      if (typeof value === 'string' && value.includes('minute')) {
-        const match = value.match(/(\d+)\s*minute.*?(\d+)\s*second/);
-        if (match) {
-          foundData.lengthSeconds = String(parseInt(match[1]) * 60 + parseInt(match[2]));
-          console.log('[YouTube Info] Found duration in aria label:', foundData.lengthSeconds);
-          break;
+      if (value.playerOverlayVideoDetailsRenderer) {
+        // Properly extract data from playerOverlayVideoDetailsRenderer
+        const overlay = value.playerOverlayVideoDetailsRenderer;
+        foundData = {
+          ...foundData,
+          videoId: foundData.videoId || new URL(url).searchParams.get('v') || '',
+          title: overlay.title || foundData.title,
+          shortDescription: overlay.subtitle || foundData.description
+        };
+      } else {
+        // Merge data from different sections
+        if (value.title) foundData.title = value.title;
+        if (value.description) foundData.description = value.description;
+        if (value.lengthText && !foundData.lengthSeconds) {
+          const parts = value.lengthText.simpleText?.split(':').map(Number);
+          if (parts?.length === 2) {
+            foundData.lengthSeconds = String(parts[0] * 60 + parts[1]);
+          }
         }
-      } else if (typeof value === 'string' || typeof value === 'number') {
-        foundData.lengthSeconds = String(value);
-        console.log('[YouTube Info] Found duration in path:', path);
-        break;
+        if (value.lengthSeconds && !foundData.lengthSeconds) {
+          foundData.lengthSeconds = value.lengthSeconds;
+        }
+        if (value.videoDetails) Object.assign(foundData, value.videoDetails);
+      }
+    }
+  }
+  
+  // If we still don't have a duration, try more paths
+  if (!foundData.lengthSeconds) {
+    const moreDurationPaths = [
+      'playerOverlays.playerOverlayRenderer.decoratedPlayerBarRenderer.decoratedPlayerBarRenderer.playerBar.multiMarkersPlayerBarRenderer.markersMap[0].value.durationText',
+      'microformat.playerMicroformatRenderer.lengthSeconds',
+      'contents.twoColumnWatchNextResults.results.results.contents[0].videoPrimaryInfoRenderer.videoActions.menuRenderer.topLevelButtons[0].segmentedLikeDislikeButtonRenderer.likeCount'
+    ];
+
+    for (const path of moreDurationPaths) {
+      const value = path.split('.').reduce((obj, key) => {
+        if (key.includes('[')) {
+          const [arrayKey, index] = key.split(/[\[\]]/);
+          return (obj?.[arrayKey] || [])[parseInt(index)] || null;
+        }
+        return obj?.[key] || null;
+      }, data);
+
+      if (value) {
+        if (typeof value === 'string' && value.includes(':')) {
+          const parts = value.split(':').map(Number);
+          if (parts.length === 2) {
+            foundData.lengthSeconds = String(parts[0] * 60 + parts[1]);
+            console.log('[YouTube Info] Found duration in additional format:', value);
+            break;
+          }
+        }
       }
     }
   }
@@ -228,10 +273,7 @@ function extractVideoDetailsFromData(videoData: any, url: string): any {
                  '';
                  
   let title = '';
-  // Handle playerOverlayVideoDetailsRenderer structure
-  if (videoData.playerOverlayVideoDetailsRenderer?.title?.simpleText) {
-    title = videoData.playerOverlayVideoDetailsRenderer.title.simpleText;
-  } else if (videoData.title?.simpleText) {
+  if (videoData.title?.simpleText) {
     title = videoData.title.simpleText;
   } else if (videoData.title?.runs?.[0]?.text) {
     title = videoData.title.runs[0].text;
@@ -242,23 +284,17 @@ function extractVideoDetailsFromData(videoData: any, url: string): any {
   console.log('[YouTube Info] Extracted title:', title);
   
   let description = '';
-  // Try to get full description from structured data
-  description = findStructuredDescription(cheerio.load(''), videoData);
-
-  // Fallback to description runs if structured data is not available
-  if (!description && videoData.descriptionRuns) {
-    description = videoData.descriptionRuns.map((r: any) => r.text).join('');
-  } else if (!description && videoData.description?.simpleText) {
+  if (videoData.description?.simpleText) {
     description = videoData.description.simpleText;
-  } else if (!description && videoData.description?.runs) {
+  } else if (videoData.description?.runs) {
     description = videoData.description.runs.map((r: any) => r.text).join('');
-  } else if (!description && typeof videoData.description === 'string') {
+  } else if (typeof videoData.description === 'string') {
     description = videoData.description;
   }
   
-  // Don't fallback to subtitle/view count if we don't have a proper description
-  if (!description && videoData.playerOverlayVideoDetailsRenderer?.subtitle?.runs) {
-    const subtitleText = videoData.playerOverlayVideoDetailsRenderer.subtitle.runs
+  // Don't use subtitle as description if it only contains channel name and view count
+  if (!description && videoData.subtitle?.runs) {
+    const subtitleText = videoData.subtitle.runs
       .map((r: any) => r.text)
       .join('');
     if (!subtitleText.includes('views')) {
@@ -268,34 +304,20 @@ function extractVideoDetailsFromData(videoData: any, url: string): any {
   
   console.log('[YouTube Info] Found description:', !!description);
   
-  // Try to find duration in multiple locations and formats
   let duration = '0';
-  let durationText = '';
-  
-  if (videoData.lengthText?.simpleText) {
-    durationText = videoData.lengthText.simpleText;
-  } else if (videoData.durationText?.simpleText) {
-    durationText = videoData.durationText.simpleText;
-  } else if (videoData.duration?.simpleText) {
-    durationText = videoData.duration.simpleText;
-  } else if (videoData.timeDescription?.simpleText) {
-    durationText = videoData.timeDescription.simpleText;
-  }
-  
-  if (durationText) {
-    // Convert MM:SS or HH:MM:SS format to seconds
-    const parts = durationText.split(':').map(Number);
+  if (videoData.lengthSeconds && !isNaN(videoData.lengthSeconds)) {
+    duration = videoData.lengthSeconds;
+  } else if (videoData.lengthText?.simpleText) {
+    // Convert MM:SS format to seconds
+    const parts = videoData.lengthText.simpleText.split(':').map(Number);
     if (parts.length === 2) {
       duration = String(parts[0] * 60 + parts[1]);
     } else if (parts.length === 3) {
       duration = String(parts[0] * 3600 + parts[1] * 60 + parts[2]);
     }
-  } else if (videoData.lengthSeconds) {
-    duration = videoData.lengthSeconds;
   }
   
-  console.log('[YouTube Info] Found duration text:', durationText);
-  console.log('[YouTube Info] Converted duration:', duration);
+  console.log('[YouTube Info] Found duration:', duration);
   
   // Only return if we have at least a video ID and title
   if (videoId && title) {
@@ -355,6 +377,7 @@ export default defineEventHandler(async (event: H3Event) => {
     
     // Try multiple methods to extract video details
     let videoDetails: any = null;
+    let ytData: any = null;
     
     // Method 1: Try to find and parse ytInitialPlayerResponse
     const playerResponse = extractYouTubePlayerResponse($);
@@ -371,8 +394,8 @@ export default defineEventHandler(async (event: H3Event) => {
     // Method 2: Try to find and parse ytInitialData
     if (!videoDetails) {
       console.log('[YouTube Info] Trying ytInitialData method...');
-      const ytData = extractYouTubeInitialData($);
-      const videoData = findVideoDataInInitialData(ytData);
+      ytData = extractYouTubeInitialData($);
+      const videoData = findVideoDataInInitialData(ytData, url as string);
       
       if (videoData) {
         videoDetails = extractVideoDetailsFromData(videoData, url as string);
@@ -441,6 +464,15 @@ export default defineEventHandler(async (event: H3Event) => {
       });
     }
 
+    // Try to get full description from structured data if available
+    if (ytData && (!videoDetails.shortDescription || videoDetails.shortDescription.includes('views'))) {
+      const structuredDescription = findStructuredDescription($, ytData);
+      if (structuredDescription) {
+        videoDetails.shortDescription = structuredDescription;
+        console.log('[YouTube Info] Found structured description');
+      }
+    }
+
     // Get highest quality thumbnail
     const thumbnails = videoDetails.thumbnail?.thumbnails || [];
     const bestThumbnail = thumbnails.sort((a: any, b: any) => (b.width || 0) - (a.width || 0))[0];
@@ -458,7 +490,8 @@ export default defineEventHandler(async (event: H3Event) => {
     console.log('[YouTube Info] Successfully extracted video details:', {
       videoId: result.videoId,
       title: result.title,
-      duration: result.duration
+      duration: result.duration,
+      hasDescription: !!result.description
     });
 
     return result;
