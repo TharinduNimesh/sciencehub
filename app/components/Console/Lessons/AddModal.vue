@@ -118,13 +118,18 @@
               />
             </UFormGroup>
 
-            <UFormGroup label="Duration (minutes)" name="duration" required>
+            <UFormGroup label="Duration" name="duration" required>
               <UInput
                 v-model="form.duration"
+                type="number"
+                min="0"
                 placeholder="Duration in minutes"
                 icon="i-heroicons-clock"
                 :disabled="isLoadingVideo"
               />
+              <template #help>
+                <span class="text-xs text-gray-500">Enter duration in minutes (e.g., 90 for 1.5 hours)</span>
+              </template>
             </UFormGroup>
           </div>
         </div>

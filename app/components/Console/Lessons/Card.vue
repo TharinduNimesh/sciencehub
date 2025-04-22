@@ -221,13 +221,15 @@ const handleEditLesson = (updatedLesson: Lesson) => {
 
 // Format duration (minutes) to readable format
 const formatDuration = (minutes: number): string => {
+  if (!minutes) return '0 min';
+  
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
 
   if (hours > 0) {
-    return `${hours}:${mins.toString().padStart(2, "0")}`;
+    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
   }
-  return `${mins} min`;
+  return `${mins}m`;
 };
 
 // Update formatDate to handle optional createdAt
