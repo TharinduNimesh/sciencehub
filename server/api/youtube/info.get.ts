@@ -112,27 +112,60 @@ export default defineEventHandler(async (event: H3Event) => {
     // Fetch video page
     const response = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
         'Accept-Language': 'en-US,en;q=0.9',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Cookie': 'CONSENT=YES+;'
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Connection': 'keep-alive',
+        'Cache-Control': 'max-age=0',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'none',
+        'Sec-Fetch-User': '?1',
+        'Cookie': 'CONSENT=YES+; GPS=1'
       }
     });
 
     if (!response.ok) {
+      console.error('YouTube response not OK:', {
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries())
+      });
       throw createError({
         statusCode: response.status,
-        message: 'Failed to fetch video page'
+        message: `Failed to fetch video page: ${response.status} ${response.statusText}`
       });
     }
 
     const html = await response.text();
+    
+    // Debug log HTML length to check if we're getting actual content
+    console.log('Received HTML length:', html.length);
+    
+    if (html.length < 1000) {
+      console.error('Received suspiciously short HTML:', html);
+      throw createError({
+        statusCode: 500,
+        message: 'Received incomplete response from YouTube'
+      });
+    }
+
     const $ = cheerio.load(html, { xml: false });
     
     // Try to extract video details from different sources
     const { videoDetails, initialData } = parseYouTubeScripts($);
     const videoId = new URL(url).searchParams.get('v') || '';
     
+    // Debug log the parsing results
+    console.log('Parsing results:', {
+      hasVideoDetails: !!videoDetails,
+      hasInitialData: !!initialData,
+      videoId,
+      titleFromMeta: $('meta[property="og:title"]').attr('content'),
+      descFromMeta: $('meta[property="og:description"]').attr('content')
+    });
+
     if (!videoDetails && !videoId) {
       throw createError({
         statusCode: 400,
@@ -156,7 +189,7 @@ export default defineEventHandler(async (event: H3Event) => {
       
       throw createError({
         statusCode: 500,
-        message: 'Could not extract video details'
+        message: 'Could not extract video details - No metadata found'
       });
     }
     
@@ -178,13 +211,15 @@ export default defineEventHandler(async (event: H3Event) => {
     if (error instanceof Error) {
       throw createError({
         statusCode: (error as any).statusCode || 500,
-        message: error.message || 'Failed to fetch video information'
+        message: error.message || 'Failed to fetch video information',
+        cause: error
       });
     }
     
     throw createError({
       statusCode: 500,
-      message: 'An unexpected error occurred'
+      message: 'An unexpected error occurred',
+      cause: error
     });
   }
 });
