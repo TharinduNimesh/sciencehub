@@ -76,6 +76,7 @@ export default defineNuxtConfig({
       fromName: process.env.SMTP_FROM_NAME,
       fromEmail: process.env.SMTP_FROM_EMAIL,
     },
+    youtubeApiKey: process.env.YOUTUBE_API_KEY,
   },
 
   routeRules: {
