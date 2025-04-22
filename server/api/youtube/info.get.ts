@@ -10,20 +10,18 @@ interface YouTubeVideoDetails {
 
 function formatDuration(duration: string): string {
   const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
-  if (!match) return '00:00:00';
+  if (!match) return '0';
 
   const [_, hours = '0', minutes = '0', seconds = '0'] = match;
   
-  // Convert all to numbers
+  // Convert all to numbers and calculate total minutes
   const h = parseInt(hours);
   const m = parseInt(minutes);
   const s = parseInt(seconds);
   
-  if (h > 0) {
-    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-  } else {
-    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-  }
+  // Convert everything to minutes (rounding seconds to nearest minute)
+  const totalMinutes = (h * 60) + m + (s >= 30 ? 1 : 0);
+  return totalMinutes.toString();
 }
 
 export default defineEventHandler(async (event: H3Event) => {

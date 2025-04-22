@@ -118,13 +118,18 @@
               />
             </UFormGroup>
 
-            <UFormGroup label="Duration (minutes)" name="duration" required>
+            <UFormGroup label="Duration" name="duration" required>
               <UInput
                 v-model="form.duration"
+                type="number"
+                min="0"
                 placeholder="Duration in minutes"
                 icon="i-heroicons-clock"
                 :disabled="isLoadingVideo"
               />
+              <template #help>
+                <span class="text-xs text-gray-500">Enter duration in minutes (e.g., 90 for 1.5 hours)</span>
+              </template>
             </UFormGroup>
           </div>
         </div>
@@ -282,7 +287,7 @@ const form = ref<LessonForm>({
   classId: [],
   videoUrl: "",
   thumbnailUrl: "",
-  duration: "00:00",
+  duration: "0",
   resources: [],
 });
 
@@ -421,23 +426,18 @@ watch(
   () => props.modelValue,
   async (newModelValue) => {
     if (newModelValue && props.lesson) {
-      // Extract all class IDs from class_lessons
-      const classIds = props.lesson.class_lessons 
-        ? props.lesson.class_lessons.map(cl => cl.class_id)
-        : [];
-
-      // Populate form with lesson data
       form.value = {
         title: props.lesson.title,
         description: props.lesson.description || "",
-        classId: classIds, // Now contains array of all class IDs
+        classId: props.lesson.class_lessons 
+          ? props.lesson.class_lessons.map(cl => cl.class_id)
+          : [],
         videoUrl: props.lesson.video_url,
         thumbnailUrl: props.lesson.thumbnail_url || "",
         duration: String(props.lesson.duration),
         resources: []
       };
 
-      // Load existing resources
       await loadExistingResources(props.lesson.id);
     }
   },
