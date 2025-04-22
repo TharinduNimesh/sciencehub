@@ -1,24 +1,35 @@
-import { load } from 'cheerio';
 import { H3Event } from 'h3';
 
-function formatDuration(seconds: number): string {
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const remainingSeconds = seconds % 60;
-
-  if (hours > 0) {
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-  }
-  return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+interface YouTubeVideoDetails {
+  title: string;
+  description: string;
+  thumbnailUrl: string;
+  duration: string;
+  videoId: string;
 }
 
-interface YouTubeError extends Error {
-  statusCode?: number;
+function formatDuration(duration: string): string {
+  const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+  if (!match) return '00:00:00';
+
+  const [_, hours = '0', minutes = '0', seconds = '0'] = match;
+  
+  // Convert all to numbers
+  const h = parseInt(hours);
+  const m = parseInt(minutes);
+  const s = parseInt(seconds);
+  
+  if (h > 0) {
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  } else {
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  }
 }
 
 export default defineEventHandler(async (event: H3Event) => {
   try {
     const { url } = getQuery(event);
+    const apiKey = useRuntimeConfig().youtubeApiKey;
     
     if (!url || typeof url !== 'string') {
       throw createError({
@@ -27,66 +38,81 @@ export default defineEventHandler(async (event: H3Event) => {
       });
     }
 
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+    if (!apiKey) {
+      throw createError({
+        statusCode: 500,
+        message: 'YouTube API key is not configured'
+      });
+    }
+
+    // Extract video ID from URL
+    const videoId = new URL(url).searchParams.get('v');
+    if (!videoId) {
+      throw createError({
+        statusCode: 400,
+        message: 'Invalid YouTube URL'
+      });
+    }
+
+    // Fetch video details from YouTube Data API
+    const response = await fetch(
+      `https://www.googleapis.com/youtube/v3/videos?id=${videoId}&key=${apiKey}&part=snippet,contentDetails`,
+      {
+        headers: {
+          'Accept': 'application/json',
+        }
       }
-    });
-    
+    );
+
     if (!response.ok) {
       throw createError({
         statusCode: response.status,
-        message: 'Failed to fetch video page'
+        message: `YouTube API error: ${response.statusText}`
       });
     }
 
-    const html = await response.text();
-    const ytPlayerDataMatch = html.match(/ytInitialPlayerResponse\s*=\s*({.+?});/);
+    const data = await response.json();
     
-    if (!ytPlayerDataMatch?.[1]) {
+    if (!data.items || data.items.length === 0) {
       throw createError({
-        statusCode: 500,
-        message: 'Could not extract video data'
+        statusCode: 404,
+        message: 'Video not found'
       });
     }
 
-    const playerData = JSON.parse(ytPlayerDataMatch[1]);
-    const videoDetails = playerData.videoDetails;
+    const video = data.items[0];
+    const snippet = video.snippet;
+    const contentDetails = video.contentDetails;
 
-    if (!videoDetails) {
-      throw createError({
-        statusCode: 500,
-        message: 'Video details not found'
-      });
-    }
+    // Get best quality thumbnail
+    const thumbnails = snippet.thumbnails;
+    const bestThumbnail = thumbnails.maxres || thumbnails.high || thumbnails.medium || thumbnails.default;
 
-    // Get highest quality thumbnail
-    const thumbnails = videoDetails.thumbnail?.thumbnails || [];
-    const bestThumbnail = thumbnails.sort((a: any, b: any) => b.width - a.width)[0];
-    const thumbnailUrl = bestThumbnail?.url || 
-                        `https://i.ytimg.com/vi/${videoDetails.videoId}/maxresdefault.jpg`;
-
-    return {
-      title: videoDetails.title || '',
-      description: videoDetails.shortDescription || '',
-      thumbnailUrl,
-      duration: formatDuration(parseInt(videoDetails.lengthSeconds) || 0),
-      videoId: videoDetails.videoId
+    const videoDetails: YouTubeVideoDetails = {
+      title: snippet.title,
+      description: snippet.description || '',
+      thumbnailUrl: bestThumbnail.url,
+      duration: formatDuration(contentDetails.duration),
+      videoId: videoId
     };
-  } catch (error: unknown) {
-    console.error('Error scraping YouTube video:', error);
+
+    return videoDetails;
+
+  } catch (error) {
+    console.error('Error fetching video info:', error);
     
     if (error instanceof Error) {
-      const ytError = error as YouTubeError;
       throw createError({
-        statusCode: ytError.statusCode || 500,
-        message: ytError.message || 'Failed to fetch video information'
+        statusCode: (error as any).statusCode || 500,
+        message: error.message || 'Failed to fetch video information',
+        cause: error
       });
     }
     
     throw createError({
       statusCode: 500,
-      message: 'An unexpected error occurred'
+      message: 'An unexpected error occurred',
+      cause: error
     });
   }
 });
