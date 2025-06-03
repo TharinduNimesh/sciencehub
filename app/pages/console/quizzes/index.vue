@@ -120,218 +120,176 @@
       />
 
       <!-- Content Section -->
-      <div v-if="isLoading" 
-        class="grid gap-6 auto-rows-fr transition-all duration-300"
-        :class="[
-          // Base responsive grid
-          'grid-cols-1',
-          // Tablet and up
-          'md:grid-cols-2',
-          // Desktop responsive based on sidebar state
-          sidebarStore.isMobile ? 'lg:grid-cols-3 xl:grid-cols-4' : 
-          sidebarStore.isOpen ? 'lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4' : 
-          'lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5'
-        ]"
-      >
-        <div
-          v-for="i in 6"
-          :key="i"
-          class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden h-full flex flex-col"
-        >
-          <!-- Header skeleton -->
-          <div class="p-6 flex flex-col flex-1">
-            <!-- Title and status -->
-            <div class="flex items-start justify-between mb-4">
-              <div class="flex-1">
-                <USkeleton class="h-6 w-full mb-2" />
-                <div class="flex items-center gap-2 mb-3">
-                  <USkeleton class="h-5 w-16 rounded-full" />
-                  <USkeleton class="h-4 w-24" />
-                </div>
-              </div>
-              <USkeleton class="h-8 w-8 rounded" />
-            </div>
-
-            <!-- Description -->
-            <USkeleton class="h-4 w-full mb-1" />
-            <USkeleton class="h-4 w-3/4 mb-4" />
-
-            <!-- Classes and stats -->
-            <div class="space-y-3 mb-4">
-              <USkeleton class="h-5 w-32" />
-              <div class="flex gap-2">
-                <USkeleton class="h-6 w-20 rounded-full" />
-                <USkeleton class="h-6 w-24 rounded-full" />
-              </div>
-            </div>
-
-            <!-- Action buttons -->
-            <div class="flex gap-2 mt-auto pt-2">
-              <USkeleton class="h-8 w-28 rounded-lg" />
-              <USkeleton class="h-8 w-20 rounded-lg" />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Empty State -->
-      <div v-else-if="filteredQuizzes.length === 0 && !hasActiveFilters" 
-           class="bg-gray-50 rounded-lg text-center transition-all duration-300"
-           :class="[
-             sidebarStore.isMobile ? 'p-8 sm:p-12' :
-             sidebarStore.isOpen ? 'p-12' : 'p-8 lg:p-12'
-           ]">
-        <div 
-          class="mx-auto flex items-center justify-center rounded-full bg-primary-50 transition-all duration-300"
-          :class="[
-            sidebarStore.isMobile ? 'h-20 w-20 sm:h-24 sm:w-24' :
-            sidebarStore.isOpen ? 'h-24 w-24' : 'h-20 w-20 lg:h-24 lg:w-24'
-          ]"
-        >
-          <UIcon 
-            name="i-heroicons-clipboard-document-list" 
+      <div>
+        <template v-if="isLoading">
+          <div class="grid gap-6 auto-rows-fr transition-all duration-300"
             :class="[
-              'text-primary-500 transition-all duration-300',
-              sidebarStore.isMobile ? 'h-10 w-10 sm:h-12 sm:w-12' :
-              sidebarStore.isOpen ? 'h-12 w-12' : 'h-10 w-10 lg:h-12 lg:w-12'
-            ]" 
-          />
-        </div>
-        <h3 
-          class="mt-6 font-semibold text-gray-900 transition-all duration-300"
-          :class="[
-            sidebarStore.isMobile ? 'text-base sm:text-lg' :
-            sidebarStore.isOpen ? 'text-lg' : 'text-base lg:text-lg'
-          ]"
-        >
-          No quizzes
-        </h3>
-        <p 
-          class="mt-2 text-gray-500 transition-all duration-300"
-          :class="[
-            sidebarStore.isMobile ? 'text-sm' :
-            sidebarStore.isOpen ? 'text-base' : 'text-sm lg:text-base'
-          ]"
-        >
-          Get started by creating a new quiz.
-        </p>
-        <div class="mt-6">
-          <UButton
-            color="primary"
-            icon="i-heroicons-plus"
-            @click="openAddModal"
-            :size="sidebarStore.isMobile ? 'sm' : sidebarStore.isOpen ? 'md' : 'md'"
-          >
-            Add Quiz
-          </UButton>
-        </div>
-      </div>
-
-      <!-- No Results State -->
-      <div v-else-if="filteredQuizzes.length === 0 && hasActiveFilters" 
-           class="bg-gray-50 rounded-lg text-center transition-all duration-300"
-           :class="[
-             sidebarStore.isMobile ? 'p-8 sm:p-12' :
-             sidebarStore.isOpen ? 'p-12' : 'p-8 lg:p-12'
-           ]">
-        <div 
-          class="mx-auto flex items-center justify-center rounded-full bg-gray-100 transition-all duration-300"
-          :class="[
-            sidebarStore.isMobile ? 'h-20 w-20 sm:h-24 sm:w-24' :
-            sidebarStore.isOpen ? 'h-24 w-24' : 'h-20 w-20 lg:h-24 lg:w-24'
-          ]"
-        >
-          <UIcon 
-            name="i-heroicons-magnifying-glass" 
-            :class="[
-              'text-gray-400 transition-all duration-300',
-              sidebarStore.isMobile ? 'h-10 w-10 sm:h-12 sm:w-12' :
-              sidebarStore.isOpen ? 'h-12 w-12' : 'h-10 w-10 lg:h-12 lg:w-12'
-            ]" 
-          />
-        </div>
-        <h3 
-          class="mt-6 font-semibold text-gray-900 transition-all duration-300"
-          :class="[
-            sidebarStore.isMobile ? 'text-base sm:text-lg' :
-            sidebarStore.isOpen ? 'text-lg' : 'text-base lg:text-lg'
-          ]"
-        >
-          No quizzes found
-        </h3>
-        <p 
-          class="mt-2 text-gray-500 transition-all duration-300"
-          :class="[
-            sidebarStore.isMobile ? 'text-sm' :
-            sidebarStore.isOpen ? 'text-base' : 'text-sm lg:text-base'
-          ]"
-        >
-          Try adjusting your search or filter criteria.
-        </p>
-      </div>
-
-      <!-- Quizzes Grid -->
-      <div v-else class="space-y-6">
-        <div 
-          class="grid gap-6 auto-rows-fr transition-all duration-300"
-          :class="[
-            // Base responsive grid
-            'grid-cols-1',
-            // Tablet and up
-            'md:grid-cols-2',
-            // Desktop responsive based on sidebar state
-            sidebarStore.isMobile ? 'lg:grid-cols-3 xl:grid-cols-4' : 
-            sidebarStore.isOpen ? 'lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4' : 
-            'lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5'
-          ]"
-        >
-          <QuizCard
-            v-for="quiz in paginatedQuizzes"
-            :key="quiz.id"
-            :quiz="quiz"
-            @edit="editQuiz"
-            @delete="deleteQuiz"
-            @duplicate="duplicateQuiz"
-          />
-        </div>
-
-        <!-- Pagination -->
-        <div 
-          class="flex justify-between items-center gap-4 pt-4 border-t border-gray-200 transition-all duration-300"
-          :class="[
-            sidebarStore.isMobile ? 'flex-col sm:flex-row' : 
-            sidebarStore.isOpen ? 'flex-col sm:flex-row' : 'flex-row'
-          ]"
-        >
-          <div 
-            class="text-gray-500 transition-all duration-300"
-            :class="[
-              sidebarStore.isMobile ? 'text-xs sm:text-sm' :
-              sidebarStore.isOpen ? 'text-sm' : 'text-xs lg:text-sm'
+              // Base responsive grid
+              'grid-cols-1',
+              // Tablet and up
+              'md:grid-cols-2',
+              // Desktop responsive based on sidebar state
+              sidebarStore.isMobile ? 'lg:grid-cols-3 xl:grid-cols-4' : 
+              sidebarStore.isOpen ? 'lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4' : 
+              'lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5'
             ]"
           >
-            Showing
-            {{ Math.min((currentPage - 1) * pageSize + 1, filteredQuizzes.length) }}-{{
-              Math.min(currentPage * pageSize, filteredQuizzes.length)
-            }}
-            of {{ filteredQuizzes.length }} quizzes
+            <div
+              v-for="i in 6"
+              :key="i"
+              class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden h-full flex flex-col"
+            >
+              <!-- Header skeleton -->
+              <div class="p-6 flex flex-col flex-1">
+                <!-- Title and status -->
+                <div class="flex items-start justify-between mb-4">
+                  <div class="flex-1">
+                    <USkeleton class="h-6 w-full mb-2" />
+                    <div class="flex items-center gap-2 mb-3">
+                      <USkeleton class="h-5 w-16 rounded-full" />
+                      <USkeleton class="h-4 w-24" />
+                    </div>
+                  </div>
+                  <USkeleton class="h-8 w-8 rounded" />
+                </div>
+
+                <!-- Description -->
+                <USkeleton class="h-4 w-full mb-1" />
+                <USkeleton class="h-4 w-3/4 mb-4" />
+
+                <!-- Classes and stats -->
+                <div class="space-y-3 mb-4">
+                  <USkeleton class="h-5 w-32" />
+                  <div class="flex gap-2">
+                    <USkeleton class="h-6 w-20 rounded-full" />
+                    <USkeleton class="h-6 w-24 rounded-full" />
+                  </div>
+                </div>
+
+                <!-- Action buttons -->
+                <div class="flex gap-2 mt-auto pt-2">
+                  <USkeleton class="h-8 w-28 rounded-lg" />
+                  <USkeleton class="h-8 w-20 rounded-lg" />
+                </div>
+              </div>
+            </div>
           </div>
-          <UPagination
-            v-model="currentPage"
-            :total="filteredQuizzes.length"
-            :page-count="pageSize"
-            :size="sidebarStore.isMobile ? 'xs' : sidebarStore.isOpen ? 'sm' : 'sm'"
-            :ui="{
-              wrapper: 'flex items-center gap-1',
-              base: 'min-w-[32px] h-[32px] flex items-center justify-center text-sm rounded-lg disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-colors',
-              rounded: 'rounded-lg',
-              default: {
-                inactive: 'hover:bg-gray-50',
-                active: 'bg-primary-50 text-primary-500 font-medium',
-              },
-            }"
-          />
-        </div>
+        </template>
+        <template v-else>
+          <div v-if="filteredQuizzes.length === 0 && !hasActiveFilters" 
+               class="bg-gray-50 rounded-lg text-center transition-all duration-300"
+               :class="[
+                 sidebarStore.isMobile ? 'p-8 sm:p-12' :
+                 sidebarStore.isOpen ? 'p-12' : 'p-8 lg:p-12'
+               ]">
+            <div 
+              class="mx-auto flex items-center justify-center rounded-full bg-primary-50 transition-all duration-300"
+              :class="[
+                sidebarStore.isMobile ? 'h-20 w-20 sm:h-24 sm:w-24' :
+                sidebarStore.isOpen ? 'h-24 w-24' : 'h-20 w-20 lg:h-24 lg:w-24'
+              ]"
+            >
+              <UIcon 
+                name="i-heroicons-clipboard-document-list" 
+                :class="[
+                  'text-primary-500 transition-all duration-300',
+                  sidebarStore.isMobile ? 'h-10 w-10 sm:h-12 sm:w-12' :
+                  sidebarStore.isOpen ? 'h-12 w-12' : 'h-10 w-10 lg:h-12 lg:w-12'
+                ]" 
+              />
+            </div>
+            <h3 
+              class="mt-6 font-semibold text-gray-900 transition-all duration-300"
+              :class="[
+                sidebarStore.isMobile ? 'text-base sm:text-lg' :
+                sidebarStore.isOpen ? 'text-lg' : 'text-base lg:text-lg'
+              ]"
+            >
+              No quizzes
+            </h3>
+            <p 
+              class="mt-2 text-gray-500 transition-all duration-300"
+              :class="[
+                sidebarStore.isMobile ? 'text-sm' :
+                sidebarStore.isOpen ? 'text-base' : 'text-sm lg:text-base'
+              ]"
+            >
+              Get started by creating a new quiz.
+            </p>
+            <div class="mt-6">
+              <UButton
+                color="primary"
+                icon="i-heroicons-plus"
+                @click="openAddModal"
+                :size="sidebarStore.isMobile ? 'sm' : sidebarStore.isOpen ? 'md' : 'md'"
+              >
+                Add Quiz
+              </UButton>
+            </div>
+          </div>
+          <div v-else class="space-y-6">
+            <!-- Quizzes Grid -->
+            <div 
+              class="grid gap-6 auto-rows-fr transition-all duration-300"
+              :class="[
+                // Base responsive grid
+                'grid-cols-1',
+                // Tablet and up
+                'md:grid-cols-2',
+                // Desktop responsive based on sidebar state
+                sidebarStore.isMobile ? 'lg:grid-cols-3 xl:grid-cols-4' : 
+                sidebarStore.isOpen ? 'lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4' : 
+                'lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5'
+              ]"
+            >
+              <QuizCard
+                v-for="quiz in paginatedQuizzes"
+                :key="quiz.id"
+                :quiz="quiz"
+                @edit="editQuiz"
+                @close="closeQuizHandler"
+              />
+            </div>
+
+            <!-- Pagination -->
+            <div 
+              class="flex justify-between items-center gap-4 pt-4 border-t border-gray-200 transition-all duration-300"
+              :class="[
+                sidebarStore.isMobile ? 'flex-col sm:flex-row' : 
+                sidebarStore.isOpen ? 'flex-col sm:flex-row' : 'flex-row'
+              ]"
+            >
+              <div 
+                class="text-gray-500 transition-all duration-300"
+                :class="[
+                  sidebarStore.isMobile ? 'text-xs sm:text-sm' :
+                  sidebarStore.isOpen ? 'text-sm' : 'text-xs lg:text-sm'
+                ]"
+              >
+                Showing
+                {{ Math.min((currentPage - 1) * pageSize + 1, filteredQuizzes.length) }}-{{
+                  Math.min(currentPage * pageSize, filteredQuizzes.length)
+                }}
+                of {{ filteredQuizzes.length }} quizzes
+              </div>
+              <UPagination
+                v-model="currentPage"
+                :total="filteredQuizzes.length"
+                :page-count="pageSize"
+                :size="sidebarStore.isMobile ? 'xs' : sidebarStore.isOpen ? 'sm' : 'sm'"
+                :ui="{
+                  wrapper: 'flex items-center gap-1',
+                  base: 'min-w-[32px] h-[32px] flex items-center justify-center text-sm rounded-lg disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-colors',
+                  rounded: 'rounded-lg',
+                  default: {
+                    inactive: 'hover:bg-gray-50',
+                    active: 'bg-primary-50 text-primary-500 font-medium',
+                  },
+                }"
+              />
+            </div>
+          </div>
+        </template>
       </div>
     </div>
 
@@ -408,6 +366,9 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useSidebarStore } from '~/stores/sidebar'
+import { useQuizzes } from '~/composables/useQuizzes'
+import { useClasses } from '~/composables/useClasses'
+import { useSupabaseClient } from '#imports'
 
 // Components
 import QuizzesFilters from '~/components/Console/Quizzes/Filters.vue'
@@ -424,7 +385,7 @@ definePageMeta({
 })
 
 // State
-const isLoading = ref(false)
+const isLoading = ref(true)
 const showAddModal = ref(false)
 const showDeleteModal = ref(false)
 const selectedQuiz = ref(null)
@@ -452,120 +413,87 @@ const filters = ref({
   dateRange: undefined
 })
 
-// Mock data - Replace with actual API calls
-const quizzes = ref([
-  {
-    id: 1,
-    title: 'Chapter 5: Photosynthesis Quiz',
-    description: 'Test your understanding of photosynthesis process',
-    googleFormLink: 'https://forms.gle/example1',
-    startDateTime: '2024-06-05T10:00',
-    endDateTime: '2024-06-07T18:00',
-    responseCount: 24,
-    createdAt: '2024-01-15T10:00:00Z',
-    duration: '45',
-    instructions: 'Please complete this quiz after reading Chapter 5.',
-    availableClasses: [
-      { id: 1, name: 'Biology Grade 10A' },
-      { id: 2, name: 'Biology Grade 10B' }
-    ]
-  },
-  {
-    id: 2,
-    title: 'Mathematical Functions Assessment',
-    description: 'Comprehensive test on functions and their properties',
-    googleFormLink: 'https://forms.gle/example2',
-    startDateTime: '2024-06-10T14:00',
-    endDateTime: '2024-06-12T23:59',
-    responseCount: 0,
-    createdAt: '2024-01-14T14:30:00Z',
-    duration: '60',
-    instructions: 'This quiz covers functions from Chapter 3.',
-    availableClasses: [
-      { id: 3, name: 'Mathematics Grade 11' }
-    ]
-  },
-  {
-    id: 3,
-    title: 'World War II History Quiz',
-    description: 'Knowledge check on WWII events and outcomes',
-    googleFormLink: 'https://forms.gle/example3',
-    startDateTime: '2024-01-10T09:00',
-    endDateTime: '2024-01-15T17:00',
-    responseCount: 31,
-    createdAt: '2024-01-10T09:15:00Z',
-    duration: null,
-    instructions: 'Based on chapters 8-10 of the textbook.',
-    availableClasses: [
-      { id: 4, name: 'History Grade 12A' },
-      { id: 5, name: 'History Grade 12B' }
-    ]
-  },
-  {
-    id: 4,
-    title: 'Chemical Bonding Fundamentals',
-    description: 'Quiz on ionic and covalent bonding concepts',
-    googleFormLink: 'https://forms.gle/example4',
-    startDateTime: '2024-06-20T11:00',
-    endDateTime: '2024-06-22T20:00',
-    responseCount: 0,
-    createdAt: '2024-01-16T11:20:00Z',
-    duration: '30',
-    instructions: 'Review notes before attempting.',
-    availableClasses: [
-      { id: 6, name: 'Chemistry Grade 11A' }
-    ]
-  },
-  {
-    id: 5,
-    title: 'Literature Analysis: Romeo and Juliet',
-    description: 'Character analysis and theme exploration quiz',
-    googleFormLink: 'https://forms.gle/example5',
-    startDateTime: '2024-06-08T09:00',
-    endDateTime: '2024-06-10T18:00',
-    responseCount: 18,
-    createdAt: '2024-01-12T16:45:00Z',
-    duration: '90',
-    instructions: 'Ensure you have completed reading Acts 1-3.',
-    availableClasses: [
-      { id: 7, name: 'English Literature Grade 10' }
-    ]
-  },
-  {
-    id: 6,
-    title: 'Physics: Motion and Forces',
-    description: 'Practice problems on kinematics and dynamics',
-    googleFormLink: 'https://forms.gle/example6',
-    startDateTime: '2024-06-15T13:00',
-    endDateTime: '2024-06-17T22:00',
-    responseCount: 15,
-    createdAt: '2024-01-13T13:10:00Z',
-    duration: '75',
-    instructions: 'Calculator allowed. Show all work.',
-    availableClasses: [
-      { id: 8, name: 'Physics Grade 12' }
-    ]
-  }
-])
+// Quizzes data
+const { createQuiz, getQuizById, updateQuiz, closeQuiz } = useQuizzes()
+const quizzes = ref([])
 
-const availableClasses = ref([
-  { id: 1, name: 'Biology Grade 10A', studentCount: 28, isActive: true },
-  { id: 2, name: 'Biology Grade 10B', studentCount: 25, isActive: true },
-  { id: 3, name: 'Mathematics Grade 11', studentCount: 32, isActive: true },
-  { id: 4, name: 'History Grade 12A', studentCount: 24, isActive: true },
-  { id: 5, name: 'History Grade 12B', studentCount: 26, isActive: true },
-  { id: 6, name: 'Chemistry Grade 11A', studentCount: 29, isActive: true },
-  { id: 7, name: 'English Literature Grade 10', studentCount: 27, isActive: true },
-  { id: 8, name: 'Physics Grade 12', studentCount: 23, isActive: true },
-  { id: 9, name: 'Computer Science Grade 11', studentCount: 20, isActive: false }
-])
+const loadQuizzes = async () => {
+  isLoading.value = true
+  try {
+    // Fetch all quizzes with their classes
+    const { data, error } = await useSupabaseClient()
+      .from('quizzes')
+      .select('*, quizzes_has_classes(class_id, classes(id, name))')
+      .order('created_at', { ascending: false })
+    if (error) throw error
+    quizzes.value = (data || []).map(q => ({
+      id: q.id,
+      title: q.title,
+      description: q.description,
+      instructions: q.instructions,
+      googleFormLink: q.form_link,
+      startDateTime: q.started_at,
+      endDateTime: q.ended_at,
+      createdAt: q.created_at,
+      duration: q.duration,
+      is_active: q.is_active,
+      availableClasses: (q.quizzes_has_classes || []).map(link => link.classes)
+    }))
+  } catch (err) {
+    console.error('Error loading quizzes:', err)
+    quizzes.value = []
+  } finally {
+    isLoading.value = false
+  }
+}
+
+onMounted(async () => {
+  isLoading.value = true
+  await loadQuizzes()
+  loadAvailableClasses()
+})
+
+const refreshData = async () => {
+  await loadQuizzes()
+}
+
+// Classes data
+const { getActiveClasses } = useClasses()
+const availableClasses = ref([])
+
+const loadAvailableClasses = async () => {
+  try {
+    const classes = await getActiveClasses()
+    availableClasses.value = classes || []
+  } catch (err) {
+    console.error('Error loading classes:', err)
+    availableClasses.value = []
+  }
+}
+
+onMounted(() => {
+  // Only handle mobile detection on mount
+  
+  // Check if mobile
+  const checkMobile = () => {
+    isMobile.value = window.innerWidth < 768
+  }
+  
+  checkMobile()
+  window.addEventListener('resize', checkMobile)
+  
+  // Cleanup on unmount
+  onUnmounted(() => {
+    window.removeEventListener('resize', checkMobile)
+  })
+})
 
 // Computed properties
 const getQuizStatus = (quiz) => {
+  if (quiz.is_active === false) return 'Closed'
   const now = new Date()
   const startDate = new Date(quiz.startDateTime)
   const endDate = new Date(quiz.endDateTime)
-  
   if (now < startDate) {
     return 'Scheduled'
   } else if (now >= startDate && now <= endDate) {
@@ -643,107 +571,35 @@ const openAddModal = () => {
   showAddModal.value = true
 }
 
-const editQuiz = (quiz) => {
-  selectedQuiz.value = quiz
-  showAddModal.value = true
-}
-
-const deleteQuiz = (quiz) => {
-  quizToDelete.value = quiz
-  showDeleteModal.value = true
-}
-
-const duplicateQuiz = async (quiz) => {
-  const now = new Date()
-  const startDateTime = new Date(now.getTime() + 24 * 60 * 60 * 1000) // Tomorrow
-  const endDateTime = new Date(startDateTime.getTime() + 7 * 24 * 60 * 60 * 1000) // One week later
-  
-  const newQuiz = {
-    ...quiz,
-    id: Date.now(), // Generate temporary ID
-    title: `${quiz.title} (Copy)`,
-    startDateTime: startDateTime.toISOString().slice(0, 16),
-    endDateTime: endDateTime.toISOString().slice(0, 16),
-    responseCount: 0,
-    createdAt: new Date().toISOString()
-  }
-  
-  quizzes.value.unshift(newQuiz)
-  
-  // Show success notification (implement with your notification system)
-  console.log('Quiz duplicated successfully!')
-}
-
-const refreshData = async () => {
-  isLoading.value = true
+const closeQuizHandler = async (quiz) => {
   try {
-    // Simulate API refresh (replace with actual API call)
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    console.log('Data refreshed successfully!')
+    await closeQuiz(quiz.id)
+    await refreshData()
   } catch (error) {
-    console.error('Error refreshing data:', error)
-  } finally {
-    isLoading.value = false
+    console.error('Error closing quiz:', error)
   }
 }
 
-const confirmDelete = async () => {
-  isDeleting.value = true
-  
+const editQuiz = async (quiz) => {
+  // Load latest quiz data from DB (with classes)
   try {
-    // Remove quiz from array (replace with API call)
-    const index = quizzes.value.findIndex(q => q.id === quizToDelete.value.id)
-    if (index > -1) {
-      quizzes.value.splice(index, 1)
+    const quizData = await getQuizById(quiz.id)
+    selectedQuiz.value = {
+      ...quiz,
+      ...quizData,
+      availableClasses: quizData.classes || []
     }
-    
-    showDeleteModal.value = false
-    quizToDelete.value = null
-    
-    // Show success notification
-    console.log('Quiz deleted successfully!')
+    showAddModal.value = true
   } catch (error) {
-    console.error('Error deleting quiz:', error)
-  } finally {
-    isDeleting.value = false
+    console.error('Error loading quiz for edit:', error)
+    selectedQuiz.value = quiz // fallback
+    showAddModal.value = true
   }
 }
 
-const handleQuizSubmit = async ({ data, isEdit, quiz }) => {
-  try {
-    if (isEdit) {
-      // Update existing quiz
-      const index = quizzes.value.findIndex(q => q.id === quiz.id)
-      if (index > -1) {
-        quizzes.value[index] = {
-          ...quiz,
-          ...data,
-          availableClasses: availableClasses.value.filter(cls => 
-            data.selectedClasses.includes(cls.id)
-          )
-        }
-      }
-      console.log('Quiz updated successfully!')
-    } else {
-      // Create new quiz
-      const newQuiz = {
-        id: Date.now(), // Generate temporary ID
-        ...data,
-        responseCount: 0,
-        createdAt: new Date().toISOString(),
-        availableClasses: availableClasses.value.filter(cls => 
-          data.selectedClasses.includes(cls.id)
-        )
-      }
-      quizzes.value.unshift(newQuiz)
-      console.log('Quiz created successfully!')
-    }
-    
-    selectedQuiz.value = null
-  } catch (error) {
-    console.error('Error saving quiz:', error)
-    throw error
-  }
+const handleQuizSubmit = async () => {
+  await refreshData()
+  selectedQuiz.value = null
 }
 
 // Watchers
@@ -767,8 +623,7 @@ watch([() => sidebarStore.isOpen, () => sidebarStore.isMobile], () => {
 
 // Lifecycle
 onMounted(() => {
-  // Load initial data (replace with actual API calls)
-  isLoading.value = false
+  // Only handle mobile detection on mount
   
   // Check if mobile
   const checkMobile = () => {

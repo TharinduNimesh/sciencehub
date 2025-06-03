@@ -22,11 +22,11 @@
         <!-- Status and Date -->
         <div class="flex items-center gap-3 mb-3">
           <UBadge 
-            :color="getStatusColor(getQuizStatus(quiz))" 
+            :color="statusColor" 
             variant="soft"
             :size="sidebarStore.isMobile ? 'xs' : 'sm'"
           >
-            {{ getQuizStatus(quiz) }}
+            {{ quizStatus }}
           </UBadge>
           <span 
             class="text-gray-500 transition-all duration-300"
@@ -142,15 +142,18 @@
     >
       <div class="flex items-center justify-between pt-4 border-t border-gray-100">
         <div class="flex items-center gap-2">
-          <UButton
-            color="primary"
-            variant="soft"
-            :size="sidebarStore.isMobile ? 'xs' : 'sm'"
-            icon="i-heroicons-eye"
-            :to="`/console/quizzes/${quiz.id}`"
-          >
-            View
-          </UButton>
+          <UTooltip text="Assign Marks">
+            <UButton
+              color="primary"
+              variant="soft"
+              :size="sidebarStore.isMobile ? 'xs' : 'sm'"
+              icon="i-heroicons-presentation-chart-bar"
+              :to="`/console/quizzes/assign/${quiz.id}`"
+              square
+            />
+          </UTooltip>
+        </div>
+        <div class="flex items-center gap-2">
           <UTooltip text="Copy quiz link">
             <UButton
               color="gray"
@@ -160,26 +163,36 @@
               @click="copyQuizLink"
             />
           </UTooltip>
+          <UButton
+            :to="quiz.googleFormLink"
+            target="_blank"
+            color="primary"
+            variant="outline"
+            :size="sidebarStore.isMobile ? 'xs' : 'sm'"
+            icon="i-heroicons-arrow-top-right-on-square"
+          >
+            Open Quiz
+          </UButton>
         </div>
-
-        <UButton
-          :href="quiz.googleFormLink"
-          target="_blank"
-          color="primary"
-          variant="outline"
-          :size="sidebarStore.isMobile ? 'xs' : 'sm'"
-          icon="i-heroicons-arrow-top-right-on-square"
-        >
-          Open Quiz
-        </UButton>
       </div>
     </div>
+
+    <ConfirmationDialog
+      v-model="showCloseConfirm"
+      title="Close Quiz?"
+      description="Are you sure you want to close this quiz? Students will no longer be able to submit responses. This action cannot be undone."
+      type="danger"
+      confirmText="Close Quiz"
+      cancelText="Cancel"
+      @confirm="confirmClose"
+    />
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useSidebarStore } from '~/stores/sidebar'
+import ConfirmationDialog from '~/components/Common/ConfirmationDialog.vue'
 
 const props = defineProps({
   quiz: {
@@ -188,36 +201,49 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['edit', 'delete', 'duplicate'])
+const emit = defineEmits(['edit', 'close', 'assign-marks'])
 
 // Stores
 const sidebarStore = useSidebarStore()
 
-// Computed properties
-const menuItems = computed(() => [
-  [{
-    label: 'Edit Quiz',
-    icon: 'i-heroicons-pencil-square',
-    click: () => emit('edit', props.quiz)
-  }],
-  [{
-    label: 'Duplicate Quiz',
-    icon: 'i-heroicons-document-duplicate',
-    click: () => emit('duplicate', props.quiz)
-  }],
-  [{
-    label: 'Delete Quiz',
-    icon: 'i-heroicons-trash',
-    click: () => emit('delete', props.quiz)
-  }]
-])
+const showCloseConfirm = ref(false)
 
-// Methods
-const getQuizStatus = (quiz) => {
+const handleCloseClick = () => {
+  showCloseConfirm.value = true
+}
+
+const confirmClose = () => {
+  showCloseConfirm.value = false
+  emit('close', props.quiz)
+}
+
+// Computed properties
+const menuItems = computed(() => {
+  const items = [
+    [{
+      label: 'Edit Quiz',
+      icon: 'i-heroicons-pencil-square',
+      click: () => emit('edit', props.quiz)
+    }]
+  ]
+  if (props.quiz.is_active !== false) {
+    items.push([
+      {
+        label: 'Close Quiz',
+        icon: 'i-heroicons-no-symbol',
+        click: handleCloseClick
+      }
+    ])
+  }
+  return items
+})
+
+// Make status reactive to quiz.is_active
+const quizStatus = computed(() => {
+  if (props.quiz.is_active === false) return 'Closed'
   const now = new Date()
-  const startDate = new Date(quiz.startDateTime)
-  const endDate = new Date(quiz.endDateTime)
-  
+  const startDate = new Date(props.quiz.startDateTime)
+  const endDate = new Date(props.quiz.endDateTime)
   if (now < startDate) {
     return 'Scheduled'
   } else if (now >= startDate && now <= endDate) {
@@ -225,18 +251,20 @@ const getQuizStatus = (quiz) => {
   } else {
     return 'Closed'
   }
-}
+})
 
-const getStatusColor = (status) => {
+const statusColor = computed(() => {
   const colors = {
     'Active': 'green',
     'Draft': 'yellow',
     'Closed': 'red',
     'Scheduled': 'blue'
   }
-  return colors[status] || 'gray'
-}
+  return colors[quizStatus.value] || 'gray'
+})
 
+
+// Methods
 const formatDate = (date) => {
   return new Date(date).toLocaleDateString('en-US', {
     month: 'short',

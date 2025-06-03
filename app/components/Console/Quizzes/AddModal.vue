@@ -81,7 +81,8 @@
             <USelectMenu
               v-model="form.selectedClasses"
               :options="classOptions"
-              placeholder="Select classes"
+              :placeholder="isLoadingClasses ? 'Loading classes...' : 'Select classes'"
+              :disabled="isLoadingClasses"
               multiple
               option-attribute="label"
               value-attribute="value"
@@ -191,7 +192,9 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
+import { useClasses } from '~/composables/useClasses'
+import { useQuizzes } from '~/composables/useQuizzes'
 
 const props = defineProps({
   modelValue: {
@@ -201,14 +204,14 @@ const props = defineProps({
   quiz: {
     type: Object,
     default: null
-  },
-  availableClasses: {
-    type: Array,
-    default: () => []
   }
 })
 
 const emit = defineEmits(['update:modelValue', 'submit'])
+
+// Composables
+const { getActiveClasses, loading: classesLoading } = useClasses()
+const { createQuiz, getQuizById, updateQuiz } = useQuizzes()
 
 // Local state
 const isOpen = computed({
@@ -218,6 +221,8 @@ const isOpen = computed({
 
 const isEdit = computed(() => !!props.quiz)
 const isSubmitting = ref(false)
+const availableClasses = ref([])
+const isLoadingClasses = ref(false)
 
 const form = ref({
   title: '',
@@ -234,8 +239,8 @@ const errors = ref({})
 
 // Options
 const classOptions = computed(() => 
-  props.availableClasses.map(cls => ({
-    label: `${cls.name} (${cls.studentCount} students)`,
+  availableClasses.value.map(cls => ({
+    label: cls.name,
     value: cls.id
   }))
 )
@@ -304,6 +309,20 @@ const isValidUrl = (string) => {
   }
 }
 
+const loadClasses = async () => {
+  isLoadingClasses.value = true
+  availableClasses.value = [] // Clear to avoid showing stale data
+  try {
+    const classes = await getActiveClasses()
+    availableClasses.value = classes || []
+  } catch (error) {
+    console.error('Error loading classes:', error)
+    availableClasses.value = []
+  } finally {
+    isLoadingClasses.value = false
+  }
+}
+
 const toggleClass = (classId) => {
   const index = form.value.selectedClasses.indexOf(classId)
   if (index > -1) {
@@ -347,20 +366,26 @@ const loadQuizData = () => {
 
 const handleSubmit = async () => {
   if (!validateForm()) return
-  
   isSubmitting.value = true
-  
   try {
     const submitData = {
-      ...form.value
+      ...form.value,
+      id: props.quiz?.id // needed for update
     }
-    
-    await emit('submit', {
-      data: submitData,
-      isEdit: isEdit.value,
-      quiz: props.quiz
-    })
-    
+    if (isEdit.value) {
+      await updateQuiz(submitData)
+      await emit('submit', {
+        data: submitData,
+        isEdit: true,
+        quiz: props.quiz
+      })
+    } else {
+      await createQuiz(submitData)
+      await emit('submit', {
+        data: submitData,
+        isEdit: false
+      })
+    }
     closeModal()
   } catch (error) {
     console.error('Error submitting quiz:', error)
@@ -378,8 +403,9 @@ const closeModal = () => {
 
 // Watch for quiz changes
 watch(() => props.quiz, loadQuizData, { immediate: true })
-watch(() => props.modelValue, (newValue) => {
+watch(() => props.modelValue, async (newValue) => {
   if (newValue) {
+    await loadClasses() // Load classes when modal opens
     loadQuizData()
   }
 })
