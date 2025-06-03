@@ -84,7 +84,7 @@
                     Additional resources for this lesson
                   </p>
                 </div>
-                <UBadge color="primary" variant="subtle" size="lg">
+                <UBadge color="primary" variant="soft" size="lg">
                   {{ materialsCount }} Resources
                 </UBadge>
               </div>
@@ -121,7 +121,7 @@
                       <div class="flex items-center gap-2 mt-1">
                         <UBadge
                           :color="getResourceColor(resource.type)"
-                          variant="subtle"
+                          variant="soft"
                           size="xs"
                         >
                           {{ formatResourceType(resource.type) }}
