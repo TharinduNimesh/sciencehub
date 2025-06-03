@@ -1,7 +1,7 @@
 <template>
   <div class="bg-white p-4 rounded-lg border border-gray-200 mb-6">
     <div class="flex flex-col space-y-4">
-      <div class="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+      <div class="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
         <UInput
           v-model="localFilters.search"
           placeholder="Search quizzes"
@@ -13,15 +13,6 @@
           v-model="localFilters.classId"
           :options="classOptions"
           placeholder="Filter by class"
-          option-attribute="label"
-          value-attribute="value"
-          @update:model-value="emitUpdate"
-        />
-
-        <USelectMenu
-          v-model="localFilters.status"
-          :options="statusOptions"
-          placeholder="Filter by status"
           option-attribute="label"
           value-attribute="value"
           @update:model-value="emitUpdate"
@@ -62,14 +53,6 @@
               Class: {{ getClassLabel(localFilters.classId) }}
             </UBadge>
             <UBadge
-              v-if="localFilters.status !== 'all'"
-              color="gray"
-              variant="soft"
-              class="items-center"
-            >
-              Status: {{ getStatusLabel(localFilters.status) }}
-            </UBadge>
-            <UBadge
               v-if="localFilters.dateRange"
               color="gray"
               variant="soft"
@@ -104,7 +87,6 @@ interface FilterOption {
 export interface QuizFilters {
   search: string;
   classId?: number;
-  status: string;
   dateRange?: string;
 }
 
@@ -122,7 +104,6 @@ const emit = defineEmits<{
 const defaultFilters: QuizFilters = {
   search: "",
   classId: undefined,
-  status: "all",
   dateRange: undefined,
 };
 
@@ -143,14 +124,6 @@ const classOptions = computed<FilterOption[]>(() => [
   })),
 ]);
 
-const statusOptions = computed<FilterOption[]>(() => [
-  { label: "All Status", value: "all" },
-  { label: "Active", value: "active" },
-  { label: "Draft", value: "draft" },
-  { label: "Closed", value: "closed" },
-  { label: "Scheduled", value: "scheduled" },
-]);
-
 const dateOptions = computed<FilterOption[]>(() => [
   { label: "All Time", value: undefined },
   { label: "Last 7 days", value: "7d" },
@@ -163,7 +136,6 @@ const isFiltersActive = computed(() => {
   return (
     localFilters.value.search !== "" ||
     localFilters.value.classId !== undefined ||
-    localFilters.value.status !== "all" ||
     localFilters.value.dateRange !== undefined
   );
 });
@@ -172,11 +144,6 @@ const isFiltersActive = computed(() => {
 const getClassLabel = (id: number) => {
   const classOption = (props.classes || []).find((c) => c.id === id);
   return classOption?.name || "Unknown Class";
-};
-
-const getStatusLabel = (value: string) => {
-  const option = statusOptions.value.find((opt) => opt.value === value);
-  return option?.label || value;
 };
 
 const getDateRangeLabel = (value: string) => {

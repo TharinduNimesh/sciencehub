@@ -1,6 +1,6 @@
 <template>
-  <USlideover v-model="isOpen" side="right">
-    <div class="p-6 flex-1 bg-white">
+  <USlideover v-model="isOpen" side="right" :ui="{ width: 'md:max-w-[600px]' }">
+    <div class="p-6 flex-1 bg-white overflow-y-auto h-full">
       <!-- Header -->
       <div class="flex items-center justify-between mb-6">
         <div>
@@ -71,31 +71,31 @@
           </p>
         </div>
 
-        <!-- Available Classes -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">
-            Available Classes *
-          </label>
-          <USelectMenu
-            v-model="form.selectedClasses"
-            :options="classOptions"
-            placeholder="Select classes"
-            multiple
-            option-attribute="label"
-            value-attribute="value"
-            :error="errors.selectedClasses"
-            class="w-full"
-          />
-          <p v-if="errors.selectedClasses" class="text-red-500 text-sm mt-1">
-            {{ errors.selectedClasses }}
-          </p>
-          <p class="text-gray-500 text-sm mt-1">
-            {{ form.selectedClasses.length }} class{{ form.selectedClasses.length !== 1 ? 'es' : '' }} selected
-          </p>
-        </div>
-
-        <!-- Quiz Settings -->
+        <!-- Classes and Duration -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Classes -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Classes *
+            </label>
+            <USelectMenu
+              v-model="form.selectedClasses"
+              :options="classOptions"
+              placeholder="Select classes"
+              multiple
+              option-attribute="label"
+              value-attribute="value"
+              :error="errors.selectedClasses"
+              class="w-full"
+            />
+            <p v-if="errors.selectedClasses" class="text-red-500 text-sm mt-1">
+              {{ errors.selectedClasses }}
+            </p>
+            <p class="text-gray-500 text-sm mt-1">
+              {{ form.selectedClasses.length }} class{{ form.selectedClasses.length !== 1 ? 'es' : '' }} selected
+            </p>
+          </div>
+
           <!-- Duration -->
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -109,19 +109,49 @@
               value-attribute="value"
             />
           </div>
+        </div>
 
-          <!-- Status -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              Status
-            </label>
-            <USelectMenu
-              v-model="form.status"
-              :options="statusOptions"
-              option-attribute="label"
-              value-attribute="value"
-            />
+        <!-- Quiz Schedule -->
+        <div class="space-y-4">
+          <h3 class="text-lg font-medium text-gray-900">Quiz Schedule</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Start Date Time -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                Start Date & Time *
+              </label>
+              <UInput
+                v-model="form.startDateTime"
+                type="datetime-local"
+                :error="errors.startDateTime"
+                class="w-full"
+                :min="new Date().toISOString().slice(0, 16)"
+              />
+              <p v-if="errors.startDateTime" class="text-red-500 text-sm mt-1">
+                {{ errors.startDateTime }}
+              </p>
+            </div>
+
+            <!-- End Date Time -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                End Date & Time *
+              </label>
+              <UInput
+                v-model="form.endDateTime"
+                type="datetime-local"
+                :error="errors.endDateTime"
+                class="w-full"
+                :min="form.startDateTime || new Date().toISOString().slice(0, 16)"
+              />
+              <p v-if="errors.endDateTime" class="text-red-500 text-sm mt-1">
+                {{ errors.endDateTime }}
+              </p>
+            </div>
           </div>
+          <p class="text-gray-500 text-sm">
+            Set when students can access and submit the quiz
+          </p>
         </div>
 
         <!-- Instructions -->
@@ -195,7 +225,8 @@ const form = ref({
   googleFormLink: '',
   selectedClasses: [],
   duration: null,
-  status: 'Draft',
+  startDateTime: '',
+  endDateTime: '',
   instructions: ''
 })
 
@@ -219,17 +250,13 @@ const durationOptions = [
   { label: '2 hours', value: '120' }
 ]
 
-const statusOptions = [
-  { label: 'Draft', value: 'Draft' },
-  { label: 'Active', value: 'Active' },
-  { label: 'Scheduled', value: 'Scheduled' }
-]
-
 // Computed properties
 const canSubmit = computed(() => {
   return form.value.title.trim() &&
          form.value.googleFormLink.trim() &&
          form.value.selectedClasses.length > 0 &&
+         form.value.startDateTime &&
+         form.value.endDateTime &&
          !isSubmitting.value
 })
 
@@ -249,6 +276,20 @@ const validateForm = () => {
   
   if (form.value.selectedClasses.length === 0) {
     errors.value.selectedClasses = 'Please select at least one class'
+  }
+
+  if (!form.value.startDateTime) {
+    errors.value.startDateTime = 'Start date and time is required'
+  }
+
+  if (!form.value.endDateTime) {
+    errors.value.endDateTime = 'End date and time is required'
+  } else if (form.value.startDateTime && form.value.endDateTime) {
+    const startDate = new Date(form.value.startDateTime)
+    const endDate = new Date(form.value.endDateTime)
+    if (endDate <= startDate) {
+      errors.value.endDateTime = 'End date must be after start date'
+    }
   }
   
   return Object.keys(errors.value).length === 0
@@ -279,7 +320,8 @@ const resetForm = () => {
     googleFormLink: '',
     selectedClasses: [],
     duration: null,
-    status: 'Draft',
+    startDateTime: '',
+    endDateTime: '',
     instructions: ''
   }
   errors.value = {}
@@ -293,7 +335,8 @@ const loadQuizData = () => {
       googleFormLink: props.quiz.googleFormLink || '',
       selectedClasses: props.quiz.availableClasses?.map(cls => cls.id) || [],
       duration: props.quiz.duration || null,
-      status: props.quiz.status || 'Draft',
+      startDateTime: props.quiz.startDateTime || '',
+      endDateTime: props.quiz.endDateTime || '',
       instructions: props.quiz.instructions || ''
     }
   } else {

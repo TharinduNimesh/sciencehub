@@ -1,17 +1,67 @@
 <template>
-  <div class="h-full space-y-8">
+  <div 
+    class="h-full space-y-8 transition-all duration-300"
+    :class="[
+      // Responsive padding based on sidebar state
+      sidebarStore.isMobile ? 'px-0' : 
+      sidebarStore.isOpen ? 'px-0' : 'px-2'
+    ]"
+  >
     <!-- Quizzes Section -->
-    <div class="bg-white rounded-lg shadow-sm p-6 lg:p-8 space-y-6">
-      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h2 class="text-xl font-semibold">Quizzes</h2>
-          <p class="text-sm text-gray-500 mt-1">
+    <div 
+      class="bg-white rounded-lg shadow-sm space-y-6 transition-all duration-300"
+      :class="[
+        // Dynamic padding based on sidebar state
+        sidebarStore.isMobile ? 'p-4 sm:p-6' : 
+        sidebarStore.isOpen ? 'p-6 lg:p-8' : 'p-4 lg:p-6 xl:p-8'
+      ]"
+    >
+      <div 
+        class="flex flex-col gap-4 transition-all duration-300"
+        :class="[
+          // Responsive layout based on sidebar state and screen size
+          sidebarStore.isMobile ? 'sm:flex-row sm:justify-between sm:items-center' : 
+          sidebarStore.isOpen ? 'sm:flex-row sm:justify-between sm:items-center' : 
+          'lg:flex-row lg:justify-between lg:items-center'
+        ]"
+      >
+        <div class="flex-1 min-w-0">
+          <h2 
+            class="font-semibold text-gray-900 transition-all duration-300"
+            :class="[
+              sidebarStore.isMobile ? 'text-lg sm:text-xl' :
+              sidebarStore.isOpen ? 'text-xl' : 'text-lg lg:text-xl xl:text-2xl'
+            ]"
+          >
+            Quizzes
+          </h2>
+          <p 
+            class="text-gray-500 mt-1 transition-all duration-300"
+            :class="[
+              sidebarStore.isMobile ? 'text-xs sm:text-sm' :
+              sidebarStore.isOpen ? 'text-sm' : 'text-xs lg:text-sm'
+            ]"
+          >
             Manage and create quizzes for your students
           </p>
         </div>
 
-        <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-          <div class="flex gap-2 w-full sm:w-auto">
+        <div 
+          class="flex gap-3 transition-all duration-300"
+          :class="[
+            // Responsive layout for action buttons
+            sidebarStore.isMobile ? 'flex-col sm:flex-row w-full sm:w-auto' : 
+            sidebarStore.isOpen ? 'flex-col sm:flex-row w-full sm:w-auto' : 
+            'flex-row w-auto'
+          ]"
+        >
+          <div 
+            class="flex gap-2 transition-all duration-300"
+            :class="[
+              sidebarStore.isMobile ? 'w-full sm:w-auto' : 
+              sidebarStore.isOpen ? 'w-full sm:w-auto' : 'w-auto'
+            ]"
+          >
             <UButton
               icon="i-heroicons-arrow-path"
               :ui="{ rounded: 'rounded-full' }"
@@ -20,27 +70,42 @@
               variant="ghost"
               @click="refreshData"
               square
+              :size="sidebarStore.isMobile ? 'sm' : sidebarStore.isOpen ? 'md' : 'md'"
             />
-            <div class="flex-1 sm:flex-initial">
+            <div 
+              class="transition-all duration-300"
+              :class="[
+                sidebarStore.isMobile ? 'flex-1 sm:flex-initial' : 
+                sidebarStore.isOpen ? 'flex-1 sm:flex-initial' : 'flex-initial'
+              ]"
+            >
               <UButton
                 icon="i-heroicons-funnel"
                 :ui="{ rounded: 'rounded-full' }"
                 :color="showFilters ? 'primary' : 'gray'"
                 :variant="showFilters ? 'soft' : 'ghost'"
-                :block="isMobile"
+                :block="sidebarStore.isMobile || (sidebarStore.isOpen && !sidebarStore.isMobile)"
                 @click="showFilters = !showFilters"
                 label="Filters"
+                :size="sidebarStore.isMobile ? 'sm' : sidebarStore.isOpen ? 'md' : 'md'"
               />
             </div>
           </div>
-          <div class="flex-1 sm:flex-initial">
+          <div 
+            class="transition-all duration-300"
+            :class="[
+              sidebarStore.isMobile ? 'flex-1 sm:flex-initial' : 
+              sidebarStore.isOpen ? 'flex-1 sm:flex-initial' : 'flex-initial'
+            ]"
+          >
             <UButton
               label="Add Quiz"
               color="primary"
               icon="i-heroicons-plus"
               :ui="{ rounded: 'rounded-full' }"
-              :block="isMobile"
+              :block="sidebarStore.isMobile || (sidebarStore.isOpen && !sidebarStore.isMobile)"
               @click="openAddModal"
+              :size="sidebarStore.isMobile ? 'sm' : sidebarStore.isOpen ? 'md' : 'md'"
             />
           </div>
         </div>
@@ -55,7 +120,19 @@
       />
 
       <!-- Content Section -->
-      <div v-if="isLoading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-fr">
+      <div v-if="isLoading" 
+        class="grid gap-6 auto-rows-fr transition-all duration-300"
+        :class="[
+          // Base responsive grid
+          'grid-cols-1',
+          // Tablet and up
+          'md:grid-cols-2',
+          // Desktop responsive based on sidebar state
+          sidebarStore.isMobile ? 'lg:grid-cols-3 xl:grid-cols-4' : 
+          sidebarStore.isOpen ? 'lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4' : 
+          'lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5'
+        ]"
+      >
         <div
           v-for="i in 6"
           :key="i"
@@ -99,17 +176,51 @@
 
       <!-- Empty State -->
       <div v-else-if="filteredQuizzes.length === 0 && !hasActiveFilters" 
-           class="bg-gray-50 rounded-lg p-12 text-center">
-        <div class="mx-auto h-24 w-24 flex items-center justify-center rounded-full bg-primary-50">
-          <UIcon name="i-heroicons-clipboard-document-list" class="h-12 w-12 text-primary-500" />
+           class="bg-gray-50 rounded-lg text-center transition-all duration-300"
+           :class="[
+             sidebarStore.isMobile ? 'p-8 sm:p-12' :
+             sidebarStore.isOpen ? 'p-12' : 'p-8 lg:p-12'
+           ]">
+        <div 
+          class="mx-auto flex items-center justify-center rounded-full bg-primary-50 transition-all duration-300"
+          :class="[
+            sidebarStore.isMobile ? 'h-20 w-20 sm:h-24 sm:w-24' :
+            sidebarStore.isOpen ? 'h-24 w-24' : 'h-20 w-20 lg:h-24 lg:w-24'
+          ]"
+        >
+          <UIcon 
+            name="i-heroicons-clipboard-document-list" 
+            :class="[
+              'text-primary-500 transition-all duration-300',
+              sidebarStore.isMobile ? 'h-10 w-10 sm:h-12 sm:w-12' :
+              sidebarStore.isOpen ? 'h-12 w-12' : 'h-10 w-10 lg:h-12 lg:w-12'
+            ]" 
+          />
         </div>
-        <h3 class="mt-6 text-lg font-semibold text-gray-900">No quizzes</h3>
-        <p class="mt-2 text-gray-500">Get started by creating a new quiz.</p>
+        <h3 
+          class="mt-6 font-semibold text-gray-900 transition-all duration-300"
+          :class="[
+            sidebarStore.isMobile ? 'text-base sm:text-lg' :
+            sidebarStore.isOpen ? 'text-lg' : 'text-base lg:text-lg'
+          ]"
+        >
+          No quizzes
+        </h3>
+        <p 
+          class="mt-2 text-gray-500 transition-all duration-300"
+          :class="[
+            sidebarStore.isMobile ? 'text-sm' :
+            sidebarStore.isOpen ? 'text-base' : 'text-sm lg:text-base'
+          ]"
+        >
+          Get started by creating a new quiz.
+        </p>
         <div class="mt-6">
           <UButton
             color="primary"
             icon="i-heroicons-plus"
             @click="openAddModal"
+            :size="sidebarStore.isMobile ? 'sm' : sidebarStore.isOpen ? 'md' : 'md'"
           >
             Add Quiz
           </UButton>
@@ -118,17 +229,62 @@
 
       <!-- No Results State -->
       <div v-else-if="filteredQuizzes.length === 0 && hasActiveFilters" 
-           class="bg-gray-50 rounded-lg p-12 text-center">
-        <div class="mx-auto h-24 w-24 flex items-center justify-center rounded-full bg-gray-100">
-          <UIcon name="i-heroicons-magnifying-glass" class="h-12 w-12 text-gray-400" />
+           class="bg-gray-50 rounded-lg text-center transition-all duration-300"
+           :class="[
+             sidebarStore.isMobile ? 'p-8 sm:p-12' :
+             sidebarStore.isOpen ? 'p-12' : 'p-8 lg:p-12'
+           ]">
+        <div 
+          class="mx-auto flex items-center justify-center rounded-full bg-gray-100 transition-all duration-300"
+          :class="[
+            sidebarStore.isMobile ? 'h-20 w-20 sm:h-24 sm:w-24' :
+            sidebarStore.isOpen ? 'h-24 w-24' : 'h-20 w-20 lg:h-24 lg:w-24'
+          ]"
+        >
+          <UIcon 
+            name="i-heroicons-magnifying-glass" 
+            :class="[
+              'text-gray-400 transition-all duration-300',
+              sidebarStore.isMobile ? 'h-10 w-10 sm:h-12 sm:w-12' :
+              sidebarStore.isOpen ? 'h-12 w-12' : 'h-10 w-10 lg:h-12 lg:w-12'
+            ]" 
+          />
         </div>
-        <h3 class="mt-6 text-lg font-semibold text-gray-900">No quizzes found</h3>
-        <p class="mt-2 text-gray-500">Try adjusting your search or filter criteria.</p>
+        <h3 
+          class="mt-6 font-semibold text-gray-900 transition-all duration-300"
+          :class="[
+            sidebarStore.isMobile ? 'text-base sm:text-lg' :
+            sidebarStore.isOpen ? 'text-lg' : 'text-base lg:text-lg'
+          ]"
+        >
+          No quizzes found
+        </h3>
+        <p 
+          class="mt-2 text-gray-500 transition-all duration-300"
+          :class="[
+            sidebarStore.isMobile ? 'text-sm' :
+            sidebarStore.isOpen ? 'text-base' : 'text-sm lg:text-base'
+          ]"
+        >
+          Try adjusting your search or filter criteria.
+        </p>
       </div>
 
       <!-- Quizzes Grid -->
       <div v-else class="space-y-6">
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-fr">
+        <div 
+          class="grid gap-6 auto-rows-fr transition-all duration-300"
+          :class="[
+            // Base responsive grid
+            'grid-cols-1',
+            // Tablet and up
+            'md:grid-cols-2',
+            // Desktop responsive based on sidebar state
+            sidebarStore.isMobile ? 'lg:grid-cols-3 xl:grid-cols-4' : 
+            sidebarStore.isOpen ? 'lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4' : 
+            'lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5'
+          ]"
+        >
           <QuizCard
             v-for="quiz in paginatedQuizzes"
             :key="quiz.id"
@@ -140,8 +296,20 @@
         </div>
 
         <!-- Pagination -->
-        <div class="flex flex-col sm:flex-row justify-between items-center gap-4 pt-4 border-t border-gray-200">
-          <div class="text-sm text-gray-500">
+        <div 
+          class="flex justify-between items-center gap-4 pt-4 border-t border-gray-200 transition-all duration-300"
+          :class="[
+            sidebarStore.isMobile ? 'flex-col sm:flex-row' : 
+            sidebarStore.isOpen ? 'flex-col sm:flex-row' : 'flex-row'
+          ]"
+        >
+          <div 
+            class="text-gray-500 transition-all duration-300"
+            :class="[
+              sidebarStore.isMobile ? 'text-xs sm:text-sm' :
+              sidebarStore.isOpen ? 'text-sm' : 'text-xs lg:text-sm'
+            ]"
+          >
             Showing
             {{ Math.min((currentPage - 1) * pageSize + 1, filteredQuizzes.length) }}-{{
               Math.min(currentPage * pageSize, filteredQuizzes.length)
@@ -152,7 +320,7 @@
             v-model="currentPage"
             :total="filteredQuizzes.length"
             :page-count="pageSize"
-            size="sm"
+            :size="sidebarStore.isMobile ? 'xs' : sidebarStore.isOpen ? 'sm' : 'sm'"
             :ui="{
               wrapper: 'flex items-center gap-1',
               base: 'min-w-[32px] h-[32px] flex items-center justify-center text-sm rounded-lg disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-colors',
@@ -177,13 +345,40 @@
 
     <!-- Delete Confirmation Modal -->
     <UModal v-model="showDeleteModal">
-      <div class="p-6">
+      <div 
+        class="transition-all duration-300"
+        :class="[
+          sidebarStore.isMobile ? 'p-4 sm:p-6' :
+          sidebarStore.isOpen ? 'p-6' : 'p-4 lg:p-6'
+        ]"
+      >
         <div class="flex items-center gap-3 mb-4">
-          <UIcon name="i-heroicons-exclamation-triangle" class="text-red-500 text-xl" />
-          <h3 class="text-lg font-semibold text-gray-900">Delete Quiz</h3>
+          <UIcon 
+            name="i-heroicons-exclamation-triangle" 
+            :class="[
+              'text-red-500 transition-all duration-300',
+              sidebarStore.isMobile ? 'text-lg sm:text-xl' :
+              sidebarStore.isOpen ? 'text-xl' : 'text-lg lg:text-xl'
+            ]" 
+          />
+          <h3 
+            class="font-semibold text-gray-900 transition-all duration-300"
+            :class="[
+              sidebarStore.isMobile ? 'text-base sm:text-lg' :
+              sidebarStore.isOpen ? 'text-lg' : 'text-base lg:text-lg'
+            ]"
+          >
+            Delete Quiz
+          </h3>
         </div>
         
-        <p class="text-gray-600 mb-6">
+        <p 
+          class="text-gray-600 mb-6 transition-all duration-300"
+          :class="[
+            sidebarStore.isMobile ? 'text-sm' :
+            sidebarStore.isOpen ? 'text-base' : 'text-sm lg:text-base'
+          ]"
+        >
           Are you sure you want to delete "{{ quizToDelete?.title }}"? This action cannot be undone.
         </p>
         
@@ -192,6 +387,7 @@
             variant="outline"
             color="gray"
             @click="showDeleteModal = false"
+            :size="sidebarStore.isMobile ? 'sm' : sidebarStore.isOpen ? 'md' : 'md'"
           >
             Cancel
           </UButton>
@@ -199,6 +395,7 @@
             color="red"
             @click="confirmDelete"
             :loading="isDeleting"
+            :size="sidebarStore.isMobile ? 'sm' : sidebarStore.isOpen ? 'md' : 'md'"
           >
             Delete Quiz
           </UButton>
@@ -210,11 +407,15 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useSidebarStore } from '~/stores/sidebar'
 
 // Components
 import QuizzesFilters from '~/components/Console/Quizzes/Filters.vue'
 import QuizCard from '~/components/Console/Quizzes/QuizCard.vue'
 import QuizzesAddModal from '~/components/Console/Quizzes/AddModal.vue'
+
+// Stores
+const sidebarStore = useSidebarStore()
 
 // Page metadata
 definePageMeta({
@@ -230,15 +431,24 @@ const selectedQuiz = ref(null)
 const quizToDelete = ref(null)
 const isDeleting = ref(false)
 const currentPage = ref(1)
-const pageSize = ref(12)
 const showFilters = ref(false)
 const isMobile = ref(false)
+
+// Responsive page size based on sidebar state
+const pageSize = computed(() => {
+  if (sidebarStore.isMobile) {
+    return 8 // Fewer items on mobile
+  }
+  if (sidebarStore.isOpen) {
+    return 12 // Standard amount when sidebar is open
+  }
+  return 15 // More items when sidebar is collapsed (more space)
+})
 
 // Filters
 const filters = ref({
   search: '',
   classId: undefined,
-  status: 'all',
   dateRange: undefined
 })
 
@@ -249,7 +459,8 @@ const quizzes = ref([
     title: 'Chapter 5: Photosynthesis Quiz',
     description: 'Test your understanding of photosynthesis process',
     googleFormLink: 'https://forms.gle/example1',
-    status: 'Active',
+    startDateTime: '2024-06-05T10:00',
+    endDateTime: '2024-06-07T18:00',
     responseCount: 24,
     createdAt: '2024-01-15T10:00:00Z',
     duration: '45',
@@ -264,7 +475,8 @@ const quizzes = ref([
     title: 'Mathematical Functions Assessment',
     description: 'Comprehensive test on functions and their properties',
     googleFormLink: 'https://forms.gle/example2',
-    status: 'Draft',
+    startDateTime: '2024-06-10T14:00',
+    endDateTime: '2024-06-12T23:59',
     responseCount: 0,
     createdAt: '2024-01-14T14:30:00Z',
     duration: '60',
@@ -278,7 +490,8 @@ const quizzes = ref([
     title: 'World War II History Quiz',
     description: 'Knowledge check on WWII events and outcomes',
     googleFormLink: 'https://forms.gle/example3',
-    status: 'Closed',
+    startDateTime: '2024-01-10T09:00',
+    endDateTime: '2024-01-15T17:00',
     responseCount: 31,
     createdAt: '2024-01-10T09:15:00Z',
     duration: null,
@@ -293,7 +506,8 @@ const quizzes = ref([
     title: 'Chemical Bonding Fundamentals',
     description: 'Quiz on ionic and covalent bonding concepts',
     googleFormLink: 'https://forms.gle/example4',
-    status: 'Scheduled',
+    startDateTime: '2024-06-20T11:00',
+    endDateTime: '2024-06-22T20:00',
     responseCount: 0,
     createdAt: '2024-01-16T11:20:00Z',
     duration: '30',
@@ -307,7 +521,8 @@ const quizzes = ref([
     title: 'Literature Analysis: Romeo and Juliet',
     description: 'Character analysis and theme exploration quiz',
     googleFormLink: 'https://forms.gle/example5',
-    status: 'Active',
+    startDateTime: '2024-06-08T09:00',
+    endDateTime: '2024-06-10T18:00',
     responseCount: 18,
     createdAt: '2024-01-12T16:45:00Z',
     duration: '90',
@@ -321,7 +536,8 @@ const quizzes = ref([
     title: 'Physics: Motion and Forces',
     description: 'Practice problems on kinematics and dynamics',
     googleFormLink: 'https://forms.gle/example6',
-    status: 'Active',
+    startDateTime: '2024-06-15T13:00',
+    endDateTime: '2024-06-17T22:00',
     responseCount: 15,
     createdAt: '2024-01-13T13:10:00Z',
     duration: '75',
@@ -345,9 +561,22 @@ const availableClasses = ref([
 ])
 
 // Computed properties
+const getQuizStatus = (quiz) => {
+  const now = new Date()
+  const startDate = new Date(quiz.startDateTime)
+  const endDate = new Date(quiz.endDateTime)
+  
+  if (now < startDate) {
+    return 'Scheduled'
+  } else if (now >= startDate && now <= endDate) {
+    return 'Active'
+  } else {
+    return 'Closed'
+  }
+}
+
 const hasActiveFilters = computed(() => {
   return filters.value.search || 
-         filters.value.status !== 'all' || 
          filters.value.classId !== undefined || 
          filters.value.dateRange !== undefined
 })
@@ -362,11 +591,6 @@ const filteredQuizzes = computed(() => {
       quiz.title.toLowerCase().includes(search) ||
       quiz.description.toLowerCase().includes(search)
     )
-  }
-
-  // Apply status filter
-  if (filters.value.status !== 'all') {
-    filtered = filtered.filter(quiz => quiz.status.toLowerCase() === filters.value.status)
   }
 
   // Apply class filter
@@ -410,7 +634,7 @@ const paginatedQuizzes = computed(() => {
 })
 
 const totalQuizzes = computed(() => quizzes.value.length)
-const activeQuizzes = computed(() => quizzes.value.filter(q => q.status === 'Active').length)
+const activeQuizzes = computed(() => quizzes.value.filter(q => getQuizStatus(q) === 'Active').length)
 const totalResponses = computed(() => quizzes.value.reduce((sum, q) => sum + q.responseCount, 0))
 
 // Methods
@@ -430,11 +654,16 @@ const deleteQuiz = (quiz) => {
 }
 
 const duplicateQuiz = async (quiz) => {
+  const now = new Date()
+  const startDateTime = new Date(now.getTime() + 24 * 60 * 60 * 1000) // Tomorrow
+  const endDateTime = new Date(startDateTime.getTime() + 7 * 24 * 60 * 60 * 1000) // One week later
+  
   const newQuiz = {
     ...quiz,
     id: Date.now(), // Generate temporary ID
     title: `${quiz.title} (Copy)`,
-    status: 'Draft',
+    startDateTime: startDateTime.toISOString().slice(0, 16),
+    endDateTime: endDateTime.toISOString().slice(0, 16),
     responseCount: 0,
     createdAt: new Date().toISOString()
   }
@@ -524,6 +753,17 @@ watch(showAddModal, (newValue) => {
     selectedQuiz.value = null
   }
 })
+
+// Watch sidebar state changes to reset pagination if needed
+watch([() => sidebarStore.isOpen, () => sidebarStore.isMobile], () => {
+  // Reset to first page when sidebar state changes to prevent pagination issues
+  if (currentPage.value > 1) {
+    const maxPages = Math.ceil(filteredQuizzes.value.length / pageSize.value)
+    if (currentPage.value > maxPages) {
+      currentPage.value = 1
+    }
+  }
+}, { flush: 'post' })
 
 // Lifecycle
 onMounted(() => {
