@@ -169,11 +169,20 @@ const handleSubmit = async (event) => {
     });
     
   } catch (error) {
-    toast.add({
-      title: 'Error',
-      description: 'An error occurred while submitting your application. Please try again.',
-      color: 'red'
-    });
+    // Handle duplicate email error
+    if (error?.code === '23505' && error?.message?.includes('duplicate key value')) {
+      toast.add({
+        title: 'Already Applied',
+        description: 'You have already submitted a join request with this email. If you believe this is a mistake, please contact the administrator.',
+        color: 'yellow'
+      });
+    } else {
+      toast.add({
+        title: 'Error',
+        description: 'An error occurred while submitting your application. Please try again.',
+        color: 'red'
+      });
+    }
     console.error('Form submission error:', error);
   } finally {
     isLoading.value = false;
