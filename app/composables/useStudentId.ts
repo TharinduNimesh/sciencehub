@@ -21,7 +21,7 @@ export const useStudentId = () => {
         .eq('user_id', authStore.user.id)
         .single()
       if (err) throw err
-      studentId.value = data?.id || null
+      studentId.value = (data as {id: number})?.id || null
       return studentId.value
     } catch (err2) {
       error.value = err2 as Error
