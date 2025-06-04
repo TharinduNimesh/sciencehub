@@ -28,6 +28,15 @@
           >
             {{ quizStatus }}
           </UBadge>
+          <!-- Student Marks Badge -->
+          <UBadge 
+            v-if="isStudent() && studentMark !== null"
+            :color="getMarkColor(studentMark)"
+            variant="solid"
+            :size="sidebarStore.isMobile ? 'xs' : 'sm'"
+          >
+            {{ studentMark }}%
+          </UBadge>
           <span 
             class="text-gray-500 transition-all duration-300"
             :class="[
@@ -40,8 +49,8 @@
         </div>
       </div>
 
-      <!-- Action Menu -->
-      <UDropdown :items="menuItems" :popper="{ arrow: true }">
+      <!-- Action Menu (Admin Only) -->
+      <UDropdown v-if="isAdmin()" :items="menuItems" :popper="{ arrow: true }">
         <UButton
           color="gray"
           variant="ghost"
@@ -73,8 +82,9 @@
 
       <!-- Quiz Info -->
       <div class="space-y-2 mb-4 flex-shrink-0">
-        <!-- Response Count -->
+        <!-- Response Count (Admin Only) -->
         <div 
+          v-if="isAdmin()"
           class="flex items-center gap-2 text-gray-600 transition-all duration-300"
           :class="[
             sidebarStore.isMobile ? 'text-xs sm:text-sm' :
@@ -92,6 +102,47 @@
           <span>{{ quiz.responseCount }} {{ quiz.responseCount === 1 ? 'response' : 'responses' }}</span>
         </div>
 
+        <!-- Student Mark Details (Student Only) -->
+        <div 
+          v-if="isStudent() && studentMark !== null"
+          class="flex items-center gap-2 text-gray-600 transition-all duration-300"
+          :class="[
+            sidebarStore.isMobile ? 'text-xs sm:text-sm' :
+            sidebarStore.isOpen ? 'text-sm' : 'text-xs lg:text-sm'
+          ]"
+        >
+          <UIcon 
+            name="i-heroicons-academic-cap" 
+            class="text-gray-400 flex-shrink-0"
+            :class="[
+              sidebarStore.isMobile ? 'w-3 h-3 sm:w-4 sm:h-4' :
+              sidebarStore.isOpen ? 'w-4 h-4' : 'w-3 h-3 lg:w-4 lg:h-4'
+            ]"
+          />
+          <span>Your Score: {{ studentMark }}%</span>
+        </div>
+
+        <!-- Submission Status (Student Only) -->
+        <div 
+          v-if="isStudent()"
+          class="flex items-center gap-2 text-gray-600 transition-all duration-300"
+          :class="[
+            sidebarStore.isMobile ? 'text-xs sm:text-sm' :
+            sidebarStore.isOpen ? 'text-sm' : 'text-xs lg:text-sm'
+          ]"
+        >
+          <UIcon 
+            :name="submissionStatusIcon" 
+            :class="[
+              'flex-shrink-0',
+              submissionStatusColor,
+              sidebarStore.isMobile ? 'w-3 h-3 sm:w-4 sm:h-4' :
+              sidebarStore.isOpen ? 'w-4 h-4' : 'w-3 h-3 lg:w-4 lg:h-4'
+            ]"
+          />
+          <span>{{ submissionStatusText }}</span>
+        </div>
+
         <!-- Duration -->
         <div class="flex items-center gap-2 text-sm text-gray-600">
           <UIcon name="i-heroicons-clock" class="text-gray-400 flex-shrink-0 w-4 h-4" />
@@ -105,8 +156,8 @@
         </div>
       </div>
 
-      <!-- Available Classes -->
-      <div class="mb-4 flex-1 flex flex-col">
+      <!-- Available Classes (Admin Only) -->
+      <div v-if="isAdmin()" class="mb-4 flex-1 flex flex-col">
         <p class="text-xs font-medium text-gray-700 mb-2 flex-shrink-0">Available for:</p>
         <div class="flex flex-wrap gap-1 flex-1 content-start">
           <UBadge
@@ -141,39 +192,82 @@
       ]"
     >
       <div class="flex items-center justify-between pt-4 border-t border-gray-100">
-        <div class="flex items-center gap-2">
-          <UTooltip text="Assign Marks">
+        <!-- Admin Actions -->
+        <template v-if="isAdmin()">
+          <div class="flex items-center gap-2">
+            <UTooltip text="Assign Marks">
+              <UButton
+                color="primary"
+                variant="soft"
+                :size="sidebarStore.isMobile ? 'xs' : 'sm'"
+                icon="i-heroicons-presentation-chart-bar"
+                :to="`/console/quizzes/assign/${quiz.id}`"
+                square
+              />
+            </UTooltip>
+          </div>
+          <div class="flex items-center gap-2">
+            <UTooltip text="Copy quiz link">
+              <UButton
+                color="gray"
+                variant="ghost"
+                :size="sidebarStore.isMobile ? 'xs' : 'sm'"
+                icon="i-heroicons-clipboard"
+                @click="copyQuizLink"
+              />
+            </UTooltip>
             <UButton
+              :to="quiz.googleFormLink"
+              target="_blank"
               color="primary"
-              variant="soft"
+              variant="outline"
               :size="sidebarStore.isMobile ? 'xs' : 'sm'"
-              icon="i-heroicons-presentation-chart-bar"
-              :to="`/console/quizzes/assign/${quiz.id}`"
-              square
-            />
-          </UTooltip>
-        </div>
-        <div class="flex items-center gap-2">
-          <UTooltip text="Copy quiz link">
+              icon="i-heroicons-arrow-top-right-on-square"
+            >
+              Open Quiz
+            </UButton>
+          </div>
+        </template>
+
+        <!-- Student Actions -->
+        <template v-else-if="isStudent()">
+          <div class="flex items-center gap-2 w-full justify-center">
             <UButton
+              v-if="canTakeQuiz"
+              :to="quiz.googleFormLink"
+              target="_blank"
+              color="primary"
+              variant="solid"
+              :size="sidebarStore.isMobile ? 'sm' : 'md'"
+              icon="i-heroicons-play"
+              class="flex-1 justify-center"
+            >
+              {{ studentMark !== null ? 'Retake Quiz' : 'Take Quiz' }}
+            </UButton>
+            <UButton
+              v-else-if="quizStatus === 'Closed'"
+              disabled
               color="gray"
-              variant="ghost"
-              :size="sidebarStore.isMobile ? 'xs' : 'sm'"
-              icon="i-heroicons-clipboard"
-              @click="copyQuizLink"
-            />
-          </UTooltip>
-          <UButton
-            :to="quiz.googleFormLink"
-            target="_blank"
-            color="primary"
-            variant="outline"
-            :size="sidebarStore.isMobile ? 'xs' : 'sm'"
-            icon="i-heroicons-arrow-top-right-on-square"
-          >
-            Open Quiz
-          </UButton>
-        </div>
+              variant="outline"
+              :size="sidebarStore.isMobile ? 'sm' : 'md'"
+              icon="i-heroicons-no-symbol"
+              class="flex-1 justify-center"
+            >
+              Quiz Closed
+            </UButton>
+            <UButton
+              v-else-if="quizStatus === 'Scheduled'"
+              disabled
+              color="blue"
+              variant="outline"
+              :size="sidebarStore.isMobile ? 'sm' : 'md'"
+              icon="i-heroicons-clock"
+              class="flex-1 justify-center"
+            >
+              Coming Soon
+            </UButton>
+          </div>
+        </template>
       </div>
     </div>
 
@@ -193,11 +287,17 @@
 import { computed, ref } from 'vue'
 import { useSidebarStore } from '~/stores/sidebar'
 import ConfirmationDialog from '~/components/Common/ConfirmationDialog.vue'
+import isStudent from '~/utils/is-student'
+import isAdmin from '~/utils/is-admin'
 
 const props = defineProps({
   quiz: {
     type: Object,
     required: true
+  },
+  studentMark: {
+    type: Number,
+    default: null
   }
 })
 
@@ -219,6 +319,8 @@ const confirmClose = () => {
 
 // Computed properties
 const menuItems = computed(() => {
+  if (!isAdmin()) return []
+  
   const items = [
     [{
       label: 'Edit Quiz',
@@ -237,6 +339,60 @@ const menuItems = computed(() => {
   }
   return items
 })
+
+// Student-specific computed properties
+const submissionStatusIcon = computed(() => {
+  if (props.studentMark !== null) return 'i-heroicons-check-circle'
+  if (quizStatus.value === 'Active') return 'i-heroicons-exclamation-triangle'
+  if (quizStatus.value === 'Scheduled') return 'i-heroicons-clock'
+  if (quizStatus.value === 'Closed') {
+    if (props.quiz.is_active === false) {
+      return 'i-heroicons-no-symbol' // Manually closed
+    }
+    return 'i-heroicons-x-circle' // Time expired
+  }
+  return 'i-heroicons-clock'
+})
+
+const submissionStatusColor = computed(() => {
+  if (props.studentMark !== null) return 'text-green-500'
+  if (quizStatus.value === 'Active') return 'text-yellow-500'
+  if (quizStatus.value === 'Scheduled') return 'text-gray-400'
+  if (quizStatus.value === 'Closed') {
+    if (props.quiz.is_active === false) {
+      return 'text-red-500' // Manually closed
+    }
+    return 'text-orange-500' // Time expired
+  }
+  return 'text-gray-400'
+})
+
+const submissionStatusText = computed(() => {
+  if (props.studentMark !== null) return 'Marks Assigned'
+  if (quizStatus.value === 'Active') return 'Pending Submission'
+  if (quizStatus.value === 'Scheduled') return 'Not Started'
+  if (quizStatus.value === 'Closed') {
+    // Don't show "Not Submitted" for closed quizzes since we can't determine if student actually took it
+    if (props.quiz.is_active === false) {
+      return 'Quiz Closed' // Manually closed
+    }
+    return 'Time Expired' // Naturally expired
+  }
+  return 'Not Submitted'
+})
+
+const canTakeQuiz = computed(() => {
+  return quizStatus.value === 'Active'
+})
+
+// Mark color helper
+const getMarkColor = (mark) => {
+  if (mark >= 90) return 'green'
+  if (mark >= 80) return 'blue'
+  if (mark >= 70) return 'yellow'
+  if (mark >= 60) return 'orange'
+  return 'red'
+}
 
 // Make status reactive to quiz.is_active
 const quizStatus = computed(() => {

@@ -246,6 +246,7 @@
                 v-for="quiz in paginatedQuizzes"
                 :key="quiz.id"
                 :quiz="quiz"
+                :studentMark="studentQuizMarks[quiz.id] || null"
                 @edit="editQuiz"
                 @close="closeQuizHandler"
               />
@@ -369,6 +370,9 @@ import { useSidebarStore } from '~/stores/sidebar'
 import { useQuizzes } from '~/composables/useQuizzes'
 import { useClasses } from '~/composables/useClasses'
 import { useSupabaseClient } from '#imports'
+import { useAuthStore } from '~/stores/auth'
+import isStudent from '~/utils/is-student'
+import { useStudentId } from '~/composables/useStudentId'
 
 // Components
 import QuizzesFilters from '~/components/Console/Quizzes/Filters.vue'
@@ -416,6 +420,8 @@ const filters = ref({
 // Quizzes data
 const { createQuiz, getQuizById, updateQuiz, closeQuiz } = useQuizzes()
 const quizzes = ref([])
+const studentQuizMarks = ref({}) // { quizId: mark }
+const { studentId, getStudentId } = useStudentId()
 
 const loadQuizzes = async () => {
   isLoading.value = true
@@ -439,11 +445,36 @@ const loadQuizzes = async () => {
       is_active: q.is_active,
       availableClasses: (q.quizzes_has_classes || []).map(link => link.classes)
     }))
+
+    // Load student quiz marks if user is a student
+    await loadStudentQuizMarks()
   } catch (err) {
     console.error('Error loading quizzes:', err)
     quizzes.value = []
   } finally {
     isLoading.value = false
+  }
+}
+
+const loadStudentQuizMarks = async () => {
+  if (!isStudent()) return
+  try {
+    await getStudentId()
+    if (!studentId.value) return
+    const { data, error } = await useSupabaseClient()
+      .from('quiz_marks')
+      .select('quiz_id, marks')
+      .eq('student_id', studentId.value)
+    if (error) throw error
+    studentQuizMarks.value = {}
+    if (data) {
+      data.forEach(mark => {
+        studentQuizMarks.value[mark.quiz_id] = mark.marks
+      })
+    }
+  } catch (err) {
+    console.error('Error loading student quiz marks:', err)
+    studentQuizMarks.value = {}
   }
 }
 

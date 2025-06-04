@@ -24,24 +24,30 @@
             :size="sidebarStore.isMobile ? 'sm' : 'md'"
           />
           <div>
-            <h1 
-              class="font-semibold text-gray-900 transition-all duration-300"
-              :class="[
-                sidebarStore.isMobile ? 'text-lg sm:text-xl' :
-                sidebarStore.isOpen ? 'text-xl' : 'text-lg lg:text-xl xl:text-2xl'
-              ]"
-            >
-              Assign Marks
-            </h1>
-            <p 
-              class="text-gray-500 mt-1 transition-all duration-300"
-              :class="[
-                sidebarStore.isMobile ? 'text-xs sm:text-sm' :
-                sidebarStore.isOpen ? 'text-sm' : 'text-xs lg:text-sm'
-              ]"
-            >
-              {{ quiz.title }}
-            </p>
+            <template v-if="quizLoading">
+              <USkeleton class="h-7 w-40 mb-2" />
+              <USkeleton class="h-4 w-32" />
+            </template>
+            <template v-else>
+              <h1 
+                class="font-semibold text-gray-900 transition-all duration-300"
+                :class="[
+                  sidebarStore.isMobile ? 'text-lg sm:text-xl' :
+                  sidebarStore.isOpen ? 'text-xl' : 'text-lg lg:text-xl xl:text-2xl'
+                ]"
+              >
+                {{ quiz?.title || '' }}
+              </h1>
+              <p 
+                class="text-gray-500 mt-1 transition-all duration-300"
+                :class="[
+                  sidebarStore.isMobile ? 'text-xs sm:text-sm' :
+                  sidebarStore.isOpen ? 'text-sm' : 'text-xs lg:text-sm'
+                ]"
+              >
+                {{ quiz?.description || '' }}
+              </p>
+            </template>
           </div>
         </div>
         
@@ -50,9 +56,10 @@
             icon="i-heroicons-arrow-top-right-on-square"
             color="gray"
             variant="outline"
-            :to="quiz.googleFormLink"
+            :to="quiz?.form_link || ''"
             target="_blank"
             :size="sidebarStore.isMobile ? 'sm' : 'md'"
+            :disabled="quizLoading"
           >
             View Quiz
           </UButton>
@@ -166,7 +173,31 @@
         </div>
       </div>
 
-      <div class="space-y-4">
+      <div v-if="quizLoading || classStudentsLoading">
+        <div v-for="i in 3" :key="i" class="bg-gray-50 rounded-lg p-4 border border-gray-200 flex items-center justify-between gap-4 mb-3">
+          <div class="flex items-center gap-4">
+            <USkeleton class="rounded-full h-10 w-10" />
+            <div>
+              <USkeleton class="h-4 w-32 mb-2 rounded" />
+              <div class="flex gap-2 items-center">
+                <USkeleton class="h-3 w-20 rounded" />
+                <USkeleton class="h-3 w-16 rounded" />
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center gap-4">
+            <USkeleton class="h-6 w-10 rounded" />
+            <USkeleton class="h-8 w-8 rounded" />
+          </div>
+        </div>
+      </div>
+      <div v-else-if="filteredAssignedStudents.length === 0">
+        <div class="text-center py-8">
+          <UIcon name="i-heroicons-academic-cap" class="w-12 h-12 text-gray-300 mx-auto mb-3" />
+          <p class="text-gray-500">No assigned marks found</p>
+        </div>
+      </div>
+      <div v-else class="space-y-4">
         <div
           v-for="student in filteredAssignedStudents"
           :key="student.id"
@@ -217,11 +248,6 @@
             </div>
           </div>
         </div>
-
-        <div v-if="filteredAssignedStudents.length === 0" class="text-center py-8">
-          <UIcon name="i-heroicons-academic-cap" class="w-12 h-12 text-gray-300 mx-auto mb-3" />
-          <p class="text-gray-500">No assigned marks found</p>
-        </div>
       </div>
     </div>
 
@@ -266,7 +292,31 @@
         </div>
       </div>
 
-      <div class="space-y-4">
+      <div v-if="quizLoading || classStudentsLoading">
+        <div v-for="i in 3" :key="i" class="bg-gray-50 rounded-lg p-4 border border-gray-200 flex items-center justify-between gap-4 mb-3">
+          <div class="flex items-center gap-4">
+            <USkeleton class="rounded-full h-10 w-10" />
+            <div>
+              <USkeleton class="h-4 w-32 mb-2 rounded" />
+              <div class="flex gap-2 items-center">
+                <USkeleton class="h-3 w-20 rounded" />
+                <USkeleton class="h-3 w-16 rounded" />
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <USkeleton class="h-5 w-28 rounded" />
+            <USkeleton class="h-8 w-8 rounded" />
+          </div>
+        </div>
+      </div>
+      <div v-else-if="filteredPendingStudents.length === 0">
+        <div class="text-center py-8">
+          <UIcon name="i-heroicons-clock" class="w-12 h-12 text-gray-300 mx-auto mb-3" />
+          <p class="text-gray-500">No pending assignments found</p>
+        </div>
+      </div>
+      <div v-else class="space-y-4">
         <div
           v-for="student in filteredPendingStudents"
           :key="student.id"
@@ -314,11 +364,6 @@
             </div>
           </div>
         </div>
-
-        <div v-if="filteredPendingStudents.length === 0" class="text-center py-8">
-          <UIcon name="i-heroicons-clock" class="w-12 h-12 text-gray-300 mx-auto mb-3" />
-          <p class="text-gray-500">No pending assignments found</p>
-        </div>
       </div>
     </div>
 
@@ -331,10 +376,10 @@
 
         <div v-if="selectedStudent" class="space-y-4">
           <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-              <UAvatar
-                :alt="student.name"
-                size="md"
-              />
+            <UAvatar
+              :alt="selectedStudent.name"
+              size="md"
+            />
             <div>
               <p class="font-medium">{{ selectedStudent.name }}</p>
               <p class="text-sm text-gray-500">{{ selectedStudent.email }}</p>
@@ -353,22 +398,56 @@
 
         <template #footer>
           <div class="flex justify-end gap-3">
-            <UButton color="gray" variant="outline" @click="showAssignModal = false">
+            <UButton color="gray" variant="outline" @click="showAssignModal = false" :disabled="assigningMarks">
               Cancel
             </UButton>
-            <UButton color="primary" @click="confirmAssignMarks">
+            <UButton color="primary" @click="confirmAssignMarks" :loading="assigningMarks" :disabled="assigningMarks || !isValidMarks">
               Assign Marks
             </UButton>
           </div>
         </template>
       </UCard>
     </UModal>
+
+    <!-- Add loading skeleton for quiz and class students -->
+    <div v-if="quizLoading || classStudentsLoading" class="flex flex-col gap-6 py-12">
+      <div class="animate-pulse space-y-4">
+        <div class="h-8 bg-gray-200 rounded w-1/3 mx-auto" />
+        <div class="h-6 bg-gray-200 rounded w-1/4 mx-auto" />
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
+          <div v-for="i in 4" :key="i" class="h-24 bg-gray-100 rounded-lg border border-gray-200" />
+        </div>
+        <div class="h-10 bg-gray-200 rounded w-1/2 mx-auto mt-8" />
+        <div class="h-40 bg-gray-100 rounded-lg border border-gray-200 mt-4" />
+      </div>
+      <div class="flex flex-col items-center mt-8">
+        <span class="text-gray-400 text-sm">Loading students and marks...</span>
+      </div>
+    </div>
+    <div v-else-if="quizError || classStudentsError" class="flex flex-col items-center py-12 text-red-500">
+      <span v-if="quizError">Failed to load quiz: {{ quizError.message }}</span>
+      <span v-else-if="classStudentsError">Failed to load students: {{ classStudentsError.message }}</span>
+    </div>
+    <div v-else>
+      <template v-if="assignedCount === 0 && pendingCount === 0">
+        <div class="flex flex-col items-center py-16">
+          <UIcon name="i-heroicons-user-group" class="w-16 h-16 text-gray-200 mb-4" />
+          <p class="text-gray-500 text-lg mb-2">No students found for this quiz</p>
+          <p class="text-gray-400 text-sm">Check if classes are assigned and students are enrolled.</p>
+        </div>
+      </template>
+      <template v-else>
+        <!-- Main content here -->
+      </template>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useSidebarStore } from '~/stores/sidebar'
+import { useNotification } from '~/composables/useNotification'
+
 
 // Page metadata
 definePageMeta({
@@ -383,16 +462,52 @@ const sidebarStore = useSidebarStore()
 const route = useRoute()
 const quizId = route.params.id
 
-// Dummy data
-const quiz = ref({
-  id: quizId,
-  title: 'Mathematics Final Exam 2024',
-  description: 'Comprehensive exam covering all topics from the semester',
-  googleFormLink: 'https://forms.google.com/example',
-  maxMarks: 100
-})
+// Quizzes composable
+const { getQuizById, loading: quizLoading, error: quizError } = useQuizzes()
 
-const maxMarks = 100
+// Quiz state
+const quiz = ref(null)
+const quizMarks = ref([])
+
+// Class students state
+const classStudents = ref({}) // { [classId]: students[] }
+const classStudentsLoading = ref(false)
+const classStudentsError = ref(null)
+
+const supabase = useSupabaseClient()
+const { getStudentsByClassId } = useClassStudents()
+
+// Helper to load quiz marks
+const loadQuizMarks = async (quizId) => {
+  const { data, error } = await supabase
+    .from('quiz_marks')
+    .select('*')
+    .eq('quiz_id', quizId)
+  if (error) throw error
+  quizMarks.value = data || []
+}
+
+// Load quiz data, quiz marks, and then class students
+onMounted(async () => {
+  try {
+    quiz.value = await getQuizById(Number(quizId))
+    await loadQuizMarks(Number(quizId))
+    // Only load class students after quiz and marks are loaded
+    if (quiz.value?.classes && quiz.value.classes.length > 0) {
+      classStudentsLoading.value = true
+      for (const cls of quiz.value.classes) {
+        try {
+          classStudents.value[cls.id] = await getStudentsByClassId(cls.id)
+        } catch (err) {
+          classStudentsError.value = err
+        }
+      }
+      classStudentsLoading.value = false
+    }
+  } catch (e) {
+    // error is already set in quizError
+  }
+})
 
 // State
 const assignedSearch = ref('')
@@ -401,6 +516,7 @@ const showAssignModal = ref(false)
 const selectedStudent = ref(null)
 const assignedMarks = ref('')
 const sortBy = ref('marks_desc')
+const assigningMarks = ref(false)
 
 // Sort options
 const sortOptions = [
@@ -412,73 +528,47 @@ const sortOptions = [
   { label: 'Date: Oldest First', value: 'date_asc' }
 ]
 
-// Dummy assigned students data
-const assignedStudents = ref([
-  {
-    id: 1,
-    name: 'John Doe',
-    email: 'john.doe@example.com',
-    avatar: null,
-    marks: 85,
-    assignedAt: '2024-03-15T10:30:00Z',
-    class: { name: 'Grade 10A', color: 'blue' }
-  },
-  {
-    id: 2,
-    name: 'Jane Smith',
-    email: 'jane.smith@example.com',
-    avatar: null,
-    marks: 92,
-    assignedAt: '2024-03-15T11:15:00Z',
-    class: { name: 'Grade 10B', color: 'green' }
-  },
-  {
-    id: 3,
-    name: 'Mike Johnson',
-    email: 'mike.johnson@example.com',
-    avatar: null,
-    marks: 78,
-    assignedAt: '2024-03-15T09:45:00Z',
-    class: { name: 'Grade 10A', color: 'blue' }
-  },
-  {
-    id: 4,
-    name: 'Sarah Wilson',
-    email: 'sarah.wilson@example.com',
-    avatar: null,
-    marks: 96,
-    assignedAt: '2024-03-15T12:20:00Z',
-    class: { name: 'Grade 10C', color: 'purple' }
+// Helper: Flatten all loaded class students into a single array
+const allLoadedStudents = computed(() => {
+  if (!quiz.value?.classes) return []
+  const students = []
+  for (const cls of quiz.value.classes) {
+    if (classStudents.value[cls.id]) {
+      for (const s of classStudents.value[cls.id]) {
+        students.push({
+          ...s,
+          name: s.student_name, // use correct property for name
+          email: s.student_email, // use correct property for email
+          class: { name: cls.name, color: 'blue' } // TODO: set color dynamically if available
+        })
+      }
+    }
   }
-])
+  return students
+})
 
-// Dummy pending students data
-const pendingStudents = ref([
-  {
-    id: 5,
-    name: 'David Brown',
-    email: 'david.brown@example.com',
-    avatar: null,
-    submittedAt: '2024-03-14T16:30:00Z',
-    class: { name: 'Grade 10A', color: 'blue' }
-  },
-  {
-    id: 6,
-    name: 'Emily Davis',
-    email: 'emily.davis@example.com',
-    avatar: null,
-    submittedAt: '2024-03-14T17:15:00Z',
-    class: { name: 'Grade 10B', color: 'green' }
-  },
-  {
-    id: 7,
-    name: 'Alex Miller',
-    email: 'alex.miller@example.com',
-    avatar: null,
-    submittedAt: '2024-03-14T15:45:00Z',
-    class: { name: 'Grade 10C', color: 'purple' }
-  }
-])
+// Split students into assigned and pending based on quiz_marks
+const assignedStudents = computed(() => {
+  return allLoadedStudents.value
+    .map(student => {
+      const mark = quizMarks.value.find(m => m.student_id === student.student_id)
+      if (mark) {
+        return {
+          ...student,
+          marks: mark.marks,
+          assignedAt: mark.created_at
+        }
+      }
+      return null
+    })
+    .filter(Boolean)
+})
+
+const pendingStudents = computed(() => {
+  return allLoadedStudents.value.filter(student => {
+    return !quizMarks.value.find(m => m.student_id === student.student_id)
+  })
+})
 
 // Computed properties
 const totalStudents = computed(() => assignedStudents.value.length + pendingStudents.value.length)
@@ -562,15 +652,55 @@ const assignMarks = (student) => {
   showAssignModal.value = true
 }
 
-const confirmAssignMarks = () => {
-  // Here you would normally save the marks
-  console.log('Assigning marks:', {
-    student: selectedStudent.value,
-    marks: assignedMarks.value
-  })
-  
-  showAssignModal.value = false
-  selectedStudent.value = null
-  assignedMarks.value = ''
+const isValidMarks = computed(() => {
+  // Only allow numbers >= 0 and <= 100 (or set your max)
+  const val = Number(assignedMarks.value)
+  return !isNaN(val) && val >= 0 && val <= 100 && selectedStudent.value
+})
+
+const { showSuccess, showError } = useNotification()
+
+const confirmAssignMarks = async () => {
+  if (!isValidMarks.value) return
+  assigningMarks.value = true
+  try {
+    // Check if a mark already exists for this student/quiz
+    const { data: existing, error: checkError } = await supabase
+      .from('quiz_marks')
+      .select('id')
+      .eq('quiz_id', quizId)
+      .eq('student_id', selectedStudent.value.student_id)
+      .maybeSingle()
+    if (checkError) throw checkError
+    if (existing) {
+      // Update existing mark
+      const { error: updateError } = await supabase
+        .from('quiz_marks')
+        .update({ marks: Number(assignedMarks.value) })
+        .eq('id', existing.id)
+      if (updateError) throw updateError
+      showSuccess('Marks updated successfully!')
+    } else {
+      // Insert new mark
+      const { error: insertError } = await supabase
+        .from('quiz_marks')
+        .insert({
+          quiz_id: Number(quizId),
+          student_id: selectedStudent.value.student_id,
+          marks: Number(assignedMarks.value)
+        })
+      if (insertError) throw insertError
+      showSuccess('Marks assigned successfully!')
+    }
+    showAssignModal.value = false
+    selectedStudent.value = null
+    assignedMarks.value = ''
+    // Refresh marks
+    await loadQuizMarks(Number(quizId))
+  } catch (e) {
+    showError(e.message || 'Failed to assign/update marks')
+  } finally {
+    assigningMarks.value = false
+  }
 }
 </script>
