@@ -257,13 +257,27 @@ const tagOptions = [
   "Mathematics",
   "Physics",
   "Chemistry",
-  "Biology", 
+  "Biology",
+  "English",
+  "History",
+  "Geography",
+  "ICT",
+  "Science",
   "Grade 10",
   "Grade 11",
   "Theory",
   "Practical",
   "Revision",
-  "Advanced"
+  "Advanced",
+  "Exam Prep",
+  "Homework Help",
+  "Discussion",
+  "Workshop",
+  "Lab",
+  "Assignment",
+  "Project",
+  "Group Study",
+  "Extra Class"
 ];
 
 const gradeOptions = [
@@ -273,6 +287,8 @@ const gradeOptions = [
   { label: "Grade 9", value: 9 },
   { label: "Grade 10", value: 10 },
   { label: "Grade 11", value: 11 },
+  { label: "Grade 12", value: 12 },
+  { label: "Grade 13", value: 13 },
 ]
 
 const isRecurringClass = computed(() => {
