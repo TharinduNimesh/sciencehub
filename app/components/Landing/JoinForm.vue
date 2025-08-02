@@ -80,7 +80,7 @@
                     <UFormGroup label="Grade" name="grade">
                       <USelectMenu
                         v-model="formState.grade"
-                        :options="[...Array(6)].map((_, i) => ({
+                        :options="[...Array(8)].map((_, i) => ({
                           label: `Grade ${i + 6}`,
                           value: i + 6
                         }))"

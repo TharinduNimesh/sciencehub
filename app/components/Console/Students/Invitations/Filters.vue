@@ -111,13 +111,15 @@ const emit = defineEmits<{
   'update:filters': [filters: InvitationFilters]
 }>()
 
-const gradeOptions: Option[] = [
-  { label: 'Grade 6', value: 6 },
-  { label: 'Grade 7', value: 7 },
-  { label: 'Grade 8', value: 8 },
-  { label: 'Grade 9', value: 9 },
-  { label: 'Grade 10', value: 10 },
-  { label: 'Grade 11', value: 11 }
+const gradeOptions = [
+  { label: "Grade 6", value: 6 },
+  { label: "Grade 7", value: 7 },
+  { label: "Grade 8", value: 8 },
+  { label: "Grade 9", value: 9 },
+  { label: "Grade 10", value: 10 },
+  { label: "Grade 11", value: 11 },
+  { label: "Grade 12", value: 12 },
+  { label: "Grade 13", value: 13 },
 ]
 
 const statusOptions: Option[] = [
