@@ -24,7 +24,7 @@ export const datePatternOptions = [
 export const createClassSchema = (isRecurringClass: boolean) => z.object({
   name: z.string().min(1, "Class name is required"),
   description: z.string().optional(),
-  grade: z.number().min(6).max(11, "Please select a valid grade"),
+  grade: z.number().min(6).max(13, "Please select a valid grade"),
   method: z.enum([
     "VirtualRecurringSeries",
     "VirtualSingleSession",

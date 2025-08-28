@@ -67,7 +67,8 @@ const genderOptions = [
   { label: 'Female', value: 'female' },
 ]
 
-const gradeOptions = Array.from({ length: 6 }, (_, i) => ({
+// Generate grades 6 through 13
+const gradeOptions = Array.from({ length: 8 }, (_, i) => ({
   label: `Grade ${i + 6}`,
   value: i + 6,
 }))
