@@ -14,8 +14,8 @@ export const joinFormSchema = z.object({
     email: emailSchema,
     contactNumber: phoneSchema,
     grade: z.number()
-        .min(6, 'Grade must be between 6 and 11')
-        .max(11, 'Grade must be between 6 and 11'),
+        .min(6, 'Grade must be between 6 and 13')
+        .max(13, 'Grade must be between 6 and 13'),
     referralSource: z.string()
         .min(1, 'Please select how you found us')
 })
